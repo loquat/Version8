@@ -71,7 +71,7 @@ Private Type POINTAPI
         y As Long
 End Type
 
-Private Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
+Private Declare Function ReleaseDC Lib "user32" (ByVal hWND As Long, ByVal hDC As Long) As Long
 'Private Declare Function CreateDC Lib "gdi32" Alias "CreateDCA" (ByVal lpDriverName As String, ByVal lpDeviceName As Long, ByVal lpOutput As String, pInitData As Any) As Long
 
 Private Declare Sub CopyMemory Lib "KERNEL32" Alias "RtlMoveMemory" ( _
@@ -81,7 +81,7 @@ Private Declare Function CreatePen Lib "gdi32" (ByVal nPenStyle As Long, ByVal n
 Private Declare Function CreateSolidBrush Lib "gdi32" (ByVal crColor As Long) As Long
 Private Type RECT
     Left As Long
-    top As Long
+    Top As Long
     Right As Long
     Bottom As Long
 End Type
@@ -158,7 +158,7 @@ szlMillimeters As SIZEL
 End Type
 
 Private Declare Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As Long) As Long
-Private Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function GetDC Lib "user32" (ByVal hWND As Long) As Long
 Private Declare Function GetDesktopWindow Lib "user32" () As Long
 ' Note - this is not the declare in the API viewer - modify lplpVoid to be
 ' Byref so we get the pointer back:
@@ -173,7 +173,7 @@ Private Declare Function CreateDIBSection Lib "gdi32" _
 Private Declare Function SetDIBColorTable Lib "gdi32" (ByVal hDC As Long, ByVal un1 As Long, ByVal un2 As Long, pcRGBQuad As RGBQUAD) As Long
 
 Private Declare Function StretchBlt Lib "gdi32" (ByVal hDC As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal nSrcWidth As Long, ByVal nSrcHeight As Long, ByVal dwRop As Long) As Long
-Private Declare Function StretchDIBits Lib "gdi32" (ByVal hDC As Long, ByVal x As Long, ByVal y As Long, ByVal dX As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal wSrcWidth As Long, ByVal wSrcHeight As Long, lpBits As Any, lpBitsInfo As Any, ByVal wUsage As Long, ByVal dwRop As Long) As Long
+Private Declare Function StretchDIBits Lib "gdi32" (ByVal hDC As Long, ByVal x As Long, ByVal y As Long, ByVal dX As Long, ByVal dY As Long, ByVal srcX As Long, ByVal srcY As Long, ByVal wSrcWidth As Long, ByVal wSrcHeight As Long, lpBits As Any, lpBitsInfo As Any, ByVal wUsage As Long, ByVal dwRop As Long) As Long
 Private Declare Function SetStretchBltMode Lib "gdi32" (ByVal hDC As Long, ByVal nStretchMode As Long) As Long
 Private Const COLORONCOLOR = 3
 Private Const HALFTONE = 4
@@ -201,7 +201,7 @@ Private Declare Function timeGetTime Lib "winmm.dll" () As Long
 Private Declare Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long
 
 ' Clipboard functions:
-Private Declare Function OpenClipboard Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function OpenClipboard Lib "user32" (ByVal hWND As Long) As Long
 Private Declare Function CloseClipboard Lib "user32" () As Long
 Private Declare Function SetClipboardData Lib "user32" (ByVal wFormat As Long, ByVal hMem As Long) As Long
 Private Declare Function EmptyClipboard Lib "user32" () As Long
@@ -234,7 +234,7 @@ Private Declare Function GlobalAlloc Lib "KERNEL32" (ByVal wFlags As Long, ByVal
 Private Declare Function GlobalFree Lib "KERNEL32" (ByVal hMem As Long) As Long
 Private Declare Function GlobalLock Lib "KERNEL32" (ByVal hMem As Long) As Long
 Private Declare Function GlobalUnlock Lib "KERNEL32" (ByVal hMem As Long) As Long
-Private Declare Function UpdateWindow Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function UpdateWindow Lib "user32" (ByVal hWND As Long) As Long
 Private Const RC_PALETTE As Long = &H100
 Private Const SIZEPALETTE As Long = 104
 Private Const RASTERCAPS As Long = 38
@@ -277,8 +277,8 @@ End Enum
 Private Type PicBmp
     Size As Long
     Type As Long
-    hbmp As Long
-    hPal As Long
+    hBmp As Long
+    hpal As Long
     reserved As Long
     End Type
 Private Declare Function GlobalHandle Lib "KERNEL32" (wMem As Any) As Long
@@ -318,9 +318,9 @@ Private Declare Function DrawText Lib "user32" Alias "DrawTextW" (ByVal hDC As L
 Private Const OPAQUE = 2
 Private PaintType As Boolean
 Private Declare Function SetBkMode Lib "gdi32" (ByVal hDC As Long, ByVal nBkMode As Long) As Long
-Private Declare Function DeleteEnhMetaFile Lib "gdi32" (ByVal hEMF As Long) As Long
-Private Declare Function PlayEnhMetaFile Lib "gdi32" (ByVal hDC As Long, ByVal hEMF As Long, lpRect As Any) As Long
-Private Declare Function GetMetaFileBitsEx Lib "gdi32" (ByVal hMF As Long, ByVal nsize As Long, lpvData As Any) As Long
+Private Declare Function DeleteEnhMetaFile Lib "gdi32" (ByVal hEmf As Long) As Long
+Private Declare Function PlayEnhMetaFile Lib "gdi32" (ByVal hDC As Long, ByVal hEmf As Long, lpRect As Any) As Long
+Private Declare Function GetMetaFileBitsEx Lib "gdi32" (ByVal hMf As Long, ByVal nsize As Long, lpvData As Any) As Long
 Private Declare Function SetMetaFileBitsEx Lib "gdi32" (ByVal nsize As Long, lpData As Byte) As Long
 Private Declare Function SetWinMetaFileBits Lib "gdi32" (ByVal cbBuffer As Long, lpbBuffer As Byte, ByVal hDCRef As Long, lpmfp As Any) As Long
 Private mType As Long
@@ -329,6 +329,11 @@ Const DI_MASK = &H1
 Const DI_IMAGE = &H2
 Const DI_DEFAULTSIZE = &H8
 Const DI_NORMAL = DI_MASK Or DI_IMAGE Or DI_DEFAULTSIZE
+Private Const DSS_NORMAL = &H0
+Private Const DSS_UNION = &H10
+Private Const DSS_DISABLED = &H20
+Private Const DSS_MONO = &H80
+Private Const DSS_RIGHT = &H8000
 Private Declare Function DrawIconEx Lib "user32" (ByVal hDC As Long, ByVal xLeft As Long, ByVal yTop As Long, ByVal hIcon As Long, ByVal cxWidth As Long, ByVal cyWidth As Long, ByVal istepIfAniCur As Long, ByVal hbrFlickerFreeDraw As Long, ByVal diFlags As Long) As Long
 
 Public Property Get BitmapType() As Long
@@ -348,14 +353,14 @@ ba$ = Right$("00000" & ba$, 6)
 getRGB = val("&h" & Mid$(ba$, 1, 2)) * 256 * 256 + val("&h" & Mid$(ba$, 3, 2)) * 256 + val("&h" & Mid$(ba$, 5, 2))
 End Function
 Private Function getRGBquad(rgb As RGBQUAD) As Long
-getRGBquad = cUlng(rgb.rgbRed + rgb.rgbGreen * 256 + rgb.rgbBlue * 256 * 256)
+getRGBquad = cUlng(rgb.rgbRed + rgb.rgbGreen * 256@ + rgb.rgbBlue * 256 * 256@)
 
 End Function
-Private Function cUlng(ByVal a As Double) As Long ' πέρνει έναν umsign integer και τον κάνει νορμάλ χωρίς αλλαγή των bits
+Private Function cUlng(ByVal a As Currency) As Long ' πέρνει έναν umsign integer και τον κάνει νορμάλ χωρίς αλλαγή των bits
 On Error GoTo cu1
 a = Abs(Int(a))
-If a > CDbl(2147483647#) Then
-cUlng = a - 4294967296#
+If a > 2147483647@ Then
+cUlng = a - 4294967296@
 Else
 cUlng = CLng(a)
 End If
@@ -364,11 +369,11 @@ cu1:
 cUlng = 0
 End Function
 
-Public Property Get BackColor() As Variant
-BackColor = m_backcolor
+Public Property Get backcolor() As Variant
+backcolor = m_backcolor
 End Property
 
-Public Property Let BackColor(bck As Variant)
+Public Property Let backcolor(bck As Variant)
 m_backcolor = getRGB(bck)
 End Property
 
@@ -437,9 +442,9 @@ GetDpi
 End If
 cmy = Me.Height / m_tBI.bmiHeader.biYPelsPerMeter * 100
 End Property
-Public Sub GetDpiDIB(other As cDIBSection)
-m_tBI.bmiHeader.biXPelsPerMeter = other.DPMX
-m_tBI.bmiHeader.biYPelsPerMeter = other.DPMY
+Public Sub GetDpiDIB(Other As cDIBSection)
+m_tBI.bmiHeader.biXPelsPerMeter = Other.DPMX
+m_tBI.bmiHeader.biYPelsPerMeter = Other.DPMY
 End Sub
 Public Sub GetDpi(Optional ByVal Xdpi As Long = -1, Optional ByVal Ydpi As Long = -1)
 If Xdpi <= 0 Then Xdpi = 1440 / Screen.TwipsPerPixelX
@@ -555,6 +560,7 @@ Public Function CreateDIB( _
         ByVal lHeight As Long, _
         ByRef hDIb As Long _
     ) As Boolean
+    On Error GoTo XX
     With m_tBI.bmiHeader
         .biSize = Len(m_tBI.bmiHeader)
         .biWidth = lWidth
@@ -562,12 +568,9 @@ Public Function CreateDIB( _
         .biPlanes = 1
         .biBitCount = 24
         .biCompression = BI_RGB
-        '.biSizeImage = 0
         .biSizeImage = BytesPerScanLine * .biHeight
         .biXPelsPerMeter = CLng(0.5 + (1440 / Screen.TwipsPerPixelX) / 0.0254)
         .biYPelsPerMeter = CLng(0.5 + (1440 / Screen.TwipsPerPixelY) / 0.0254)
-       '.biYPelsPerMeter = 0
-       '.biXPelsPerMeter = 0
        .biClrUsed = 0
       .biClrImportant = 0
     End With
@@ -586,7 +589,7 @@ End If
             0, 0)
 
     CreateDIB = (hDIb <> 0)
-
+XX:
 End Function
 Public Function CreateFromDIB(ByVal mib As Long) As Boolean
 'Dim lHDC As Long
@@ -1032,7 +1035,7 @@ If zf <= 0 Then
     last_zf = zf
     ' gdiflush
 End Sub
-Public Sub ThumbnailPaintPrinter(copiesNUM As Long, Optional ByVal zf As Single = -1, Optional ByVal FitToPic As Boolean = True, Optional CROP As Boolean = False, Optional over As Boolean = False, Optional ByVal fr As Long = 0, Optional ByVal offsetx As Long = 0, Optional ByVal offsety As Long, Optional ByVal border As Long = 0, Optional ByVal rtxy As Double = 1#, Optional pname As String = "")
+Public Sub ThumbnailPaintPrinter(copiesNUM As Long, Optional ByVal zf As Single = -1, Optional ByVal FitToPic As Boolean = True, Optional CROP As Boolean = False, Optional over As Boolean = False, Optional ByVal fr As Long = 0, Optional ByVal offsetx As Long = 0, Optional ByVal offsety As Long, Optional ByVal border As Long = 0, Optional ByVal rtxy As Double = 1#, Optional pname As String = vbNullString)
    Dim oldSc As Long, dummy1 As Boolean, dummy2 As Boolean, sw As Long, sh As Long
    Dim swProbe As Long, shProbe As Long, osh As Double
    Dim Myleft As Long, mytop As Long, mywidth As Long, myheight As Long
@@ -1312,7 +1315,7 @@ Public Sub ThumbnailPartPaint(DestPic As Object, _
                     Optional ByVal yPos As Long, _
                     Optional border As Boolean = False, _
                     Optional ThumbnailDist As Long = 16, _
-                    Optional ByVal lText As String = "", _
+                    Optional ByVal lText As String = vbNullString, _
                     Optional offsetx As Long = 0, _
                     Optional offsety As Long = 0)
                     Dim ThumbnailDistY As Long, zf As Single, ofsize As Single
@@ -1330,7 +1333,7 @@ Public Sub ThumbnailPartPaint(DestPic As Object, _
    If mS > 2 Then
    If Len(lText) > mS Then lText = Left$(lText, mS - 2) & ".."
     Else
-        lText = ""
+        lText = vbNullString
      ThumbnailDistY = 0
 End If
 
@@ -1359,8 +1362,8 @@ Else
              DestPic.CurrentX = (ThumbnailSizeX) * xPos + ((ThumbnailSizeX) - DestPic.TextWidth(lText)) / 2 + offsetx
             DestPic.CurrentY = (ThumbnailSizeY) * (yPos + 1) + offsety - ThumbnailDistY
             dr1.Left = DestPic.CurrentX
-            dr1.top = DestPic.CurrentY
-            dr1.Right = DestPic.scalewith
+            dr1.Top = DestPic.CurrentY
+            dr1.Right = DestPic.ScaleWidth
             dr1.Bottom = -DestPic.ScaleHeight
             DrawText DestPic.hDC, StrPtr(lText), Len(lText), dr1, DT_SINGLELINE Or DT_NOPREFIX Or DT_NOCLIP
         
@@ -1389,7 +1392,7 @@ Private Sub Class_Terminate()
 
 End Sub
 
-Public Sub SaveDib(f As String)
+Public Sub SaveDib(F As String)
 Dim bDib() As Byte
 Dim tSA As SAFEARRAY2D
 Dim a$, mf As Integer, ff As BITMAPFILEHEADER
@@ -1425,8 +1428,8 @@ Else
 maxcolors = 0
 End If
 Dim i As Long
-If NeoUnicodeFile(f) Then
-Open GetDosPath(f) For Binary As mf
+If NeoUnicodeFile(F) Then
+Open GetDosPath(F) For Binary As mf
 Put #mf, , ff
 Put #mf, , m_tBI.bmiHeader
 If maxcolors > 0 Then
@@ -1439,21 +1442,48 @@ Close #mf
 End If
 CopyMemory ByVal VarPtrArray(bDib), 0&, 4
 End Sub
-Public Sub loadDIB(f As String)
-Dim fl As Long, fmem() As Byte, fh As Long, ff As BITMAPFILEHEADER
-If GetDosPath(f) = "" Then Exit Sub
-fl = FileLen(GetDosPath(f))
 
+Public Function SaveDibToMeMBlock(mem As Object) As Boolean  ' 24 bits only
+If m_tBI.bmiHeader.biBitCount <> 24 Then Exit Function
+Dim Membl As New MemBlock
+Dim ff As BITMAPFILEHEADER
+On Error GoTo ex1
+With ff
+    .bfType = &H4D42
+    .bfSize = Len(ff) + Me.packet_bytes
+    .bfOffBits = Len(ff) + Me.header_bytes
+End With
+Membl.Costruct 1, Len(ff) + Me.header_bytes + Me.BytesPerScanLine * Me.Height, -1
+CopyMemory ByVal Membl.GetPtr(0), ff, 2
+CopyMemory ByVal Membl.GetPtr(0) + 2, ff.bfSize, 12  ' vb align issue
+CopyMemory ByVal Membl.GetPtr(0) + Len(ff), m_tBI, Len(m_tBI)
+CopyMemory ByVal Membl.GetPtr(0) + Len(ff) + Me.header_bytes, ByVal m_lPtr, Me.BytesPerScanLine * Me.Height
+Set mem = Membl
+SaveDibToMeMBlock = True
+ex1:
+End Function
+
+Public Sub loadDIB(F As String)
+Dim fl As Long, fmem() As Byte, fh As Long, ff As BITMAPFILEHEADER
+If GetDosPath(F) = vbNullString Then MissFile: Exit Sub
+On Error GoTo er11
+fl = FileLen(GetDosPath(F))
 If fl > 0 Then
 ReDim fmem(fl) As Byte
 fh = FreeFile
 
-Open GetDosPath(f) For Binary As fh
+Open GetDosPath(F) For Binary As fh
 Get #fh, , fmem()
 Close fh
 
 CreateFromDIB VarPtr(fmem(Len(ff)))
 End If
+Exit Sub
+er11:
+Err.Clear
+On Error Resume Next
+If fh <> 0 Then Close fh
+MyEr "Can't read image", "Δεν μπορώ να διαβάσω το αρχείο"
 End Sub
 
 Private Sub SentToClipBoard()
@@ -1479,7 +1509,7 @@ End If
 End Sub
 Public Sub Text(p$, x As Long, y As Long, Optional s As Single = -1, Optional DE# = 0#, Optional Style As Long = 272, Optional mWidth As Long = -1, Optional expnd As Single = -1)
 Dim old_brush As Long, old_pen As Long, my_brush As Long, my_pen As Long, ra As Long
-Dim f As LOGFONT, hPrevFont As Long, hFont As Long
+Dim F As LOGFONT, hPrevFont As Long, hFont As Long
 Dim fff As Long, dr1 As RECT
 needHDC
 If s < 0 Then s = m_fontsize
@@ -1489,36 +1519,36 @@ Dim icx As Long, icy As Long
 s = s * dpiy / 96
 ratioXY = 1
 Dim degree As Double
-degree = DE# / 180 * Pi
+degree = DE# * 1.74532925199433E-02
 icx = (s * -20) / 15
   icy = CLng(Cos(degree + Pi) * icx)
     icx = CLng(Sin(degree + Pi) * icx)
 'If degree <> 0 Then
 degree = (degree) * 180# / Pi
-  f.lfEscapement = CLng(10 * degree)
-  f.lfFaceName = m_fontname + Chr$(0)
-  f.lfCharSet = 161 '.hpSet
-  f.lfQuality = 2 'PROOF_QUALITY
-  f.lfHeight = (s * -20) / 15
+  F.lfEscapement = CLng(10 * degree)
+  F.lfFaceName = m_fontname + Chr$(0)
+  F.lfCharSet = 161 '.hpSet
+  F.lfQuality = 2 'PROOF_QUALITY
+  F.lfHeight = (s * -20) / 15
 If expnd > 0 Then
-f.lfWidth = Abs(f.lfHeight) / ratioXY * expnd
+F.lfWidth = Abs(F.lfHeight) / ratioXY * expnd
 Else
 '''' ΑΛΛΑΓΗ ΓΙΑ ΒΑΘΜΟΛΟΓΙΟ
    '''''' f.lfWidth = Abs(f.lfHeight) / ratioXY / 2
     End If
-  f.lfItalic = 0
-  f.lfUnderline = 0
+  F.lfItalic = 0
+  F.lfUnderline = 0
  ' .If DestPic.Font.Bold Or expnd Then
   'f.lfWeight = 900
   'Else
-  f.lfWeight = 400
+  F.lfWeight = 400
 
   'End If
-  hFont = CreateFontIndirect(f)
+  hFont = CreateFontIndirect(F)
   hPrevFont = SelectObject(m_hDC, hFont)
 
 With dr1
-.top = y
+.Top = y
 .Left = x
 If mWidth = -1 Then
 .Right = x + Width
@@ -1549,7 +1579,7 @@ FreeHDC
 End Sub
 Public Sub TextW(p$, x As Long, y As Long, x1 As Long, y1 As Long, Optional s As Single = -1, Optional DE# = 0#, Optional Style As Long = 272)
 Dim old_brush As Long, old_pen As Long, my_brush As Long, my_pen As Long, ra As Long
-Dim f As LOGFONT, hPrevFont As Long, hFont As Long
+Dim F As LOGFONT, hPrevFont As Long, hFont As Long
 Dim fff As Long, dr1 As RECT, expnd As Long
 needHDC
 If s < 0 Then s = m_fontsize
@@ -1559,36 +1589,36 @@ Dim icx As Long, icy As Long
 s = s * dpiy / 96
 ratioXY = 1
 Dim degree As Double
-degree = DE# / 180 * Pi
+degree = DE# * 1.74532925199433E-02
 icx = (s * -20) / 15
   icy = CLng(Cos(degree + Pi) * icx)
     icx = CLng(Sin(degree + Pi) * icx)
 'If degree <> 0 Then
 degree = (degree) * 180# / Pi
-  f.lfEscapement = CLng(10 * degree)
-  f.lfFaceName = m_fontname + Chr$(0)
-  f.lfCharSet = 161 '.hpSet
-  f.lfQuality = 2 'PROOF_QUALITY
-  f.lfHeight = (s * -20) / 15
+  F.lfEscapement = CLng(10 * degree)
+  F.lfFaceName = m_fontname + Chr$(0)
+  F.lfCharSet = 161 '.hpSet
+  F.lfQuality = 2 'PROOF_QUALITY
+  F.lfHeight = (s * -20) / 15
 If expnd > 0 Then
-f.lfWidth = Abs(f.lfHeight) / ratioXY * expnd
+F.lfWidth = Abs(F.lfHeight) / ratioXY * expnd
 Else
 '''' ΑΛΛΑΓΗ ΓΙΑ ΒΑΘΜΟΛΟΓΙΟ
    '''''' f.lfWidth = Abs(f.lfHeight) / ratioXY / 2
     End If
-  f.lfItalic = 0
-  f.lfUnderline = 0
+  F.lfItalic = 0
+  F.lfUnderline = 0
  ' .If DestPic.Font.Bold Or expnd Then
   'f.lfWeight = 900
   'Else
-  f.lfWeight = 400
+  F.lfWeight = 400
 
   'End If
-  hFont = CreateFontIndirect(f)
+  hFont = CreateFontIndirect(F)
   hPrevFont = SelectObject(m_hDC, hFont)
 
 With dr1
-.top = y
+.Top = y
 .Left = x
 .Right = x1
 .Bottom = y1
@@ -1662,7 +1692,7 @@ Dim mr As RECT
 my_brush = CreateSolidBrush(m_color)
 mr.Left = x1
 mr.Right = x2 + 1 ' to +1 to αφαιρεί!
-mr.top = y1
+mr.Top = y1
 mr.Bottom = y2 + 1
 needHDC
 FillRect m_hDC, mr, my_brush
@@ -1708,7 +1738,7 @@ Public Property Get HDC1() As Long
     HDC1 = m_hDC
 End Property
 
-Private Function CreateBitmapPicture(ByVal hbmp As Long, ByVal hPal As Long) As Picture
+Private Function CreateBitmapPicture(ByVal hBmp As Long, ByVal hpal As Long) As Picture
     Dim r As Long, pic As PicBmp, IPic As IPicture, IID_IDispatch As GUID
 
     'Fill GUID info
@@ -1722,8 +1752,8 @@ Private Function CreateBitmapPicture(ByVal hbmp As Long, ByVal hPal As Long) As 
     With pic
         .Size = Len(pic) ' Length of structure
         .Type = vbPicTypeBitmap ' Type of Picture (bitmap)
-        .hbmp = hbmp ' Handle to bitmap
-        .hPal = hPal ' Handle to palette (may be null)
+        .hBmp = hBmp ' Handle to bitmap
+        .hpal = hpal ' Handle to palette (may be null)
     End With
 
     'Create the picture
@@ -1732,10 +1762,75 @@ Private Function CreateBitmapPicture(ByVal hbmp As Long, ByVal hPal As Long) As 
     'Return the new picture
     Set CreateBitmapPicture = IPic
 End Function
+Function Picture2(Optional myscale As Single = -1) As Picture
+Dim hDCSrc As Long, LeftSrc As Long, TopSrc As Long, WidthSrc As Long, HeightSrc As Long
+    Dim hDCMemory As Long, hBmp As Long, hBmpPrev As Long, r As Long
+    Dim hpal As Long, hPalPrev As Long, RasterCapsScrn As Long, HasPaletteScrn As Long
+    Dim PaletteSizeScrn As Long, LogPal As LOGPALETTE
+    If myscale = -1 And Not wmfemf Is Nothing Then
+    Set Picture2 = wmfemf
+    Exit Function
+    End If
+    If myscale < 0 Then myscale = 1
+    needHDC
+hDCSrc = m_hDC
+LeftSrc = 0
+TopSrc = 0
+WidthSrc = Width * myscale
+HeightSrc = Height * myscale
+    'Create a compatible device context
+    hDCMemory = CreateCompatibleDC(hDCSrc)
+    'Create a compatible bitmap
+    hBmp = CreateCompatibleBitmap(hDCSrc, WidthSrc, HeightSrc)
+    'Select the compatible bitmap into our compatible device context
+    hBmpPrev = SelectObject(hDCMemory, hBmp)
+
+    'Raster capabilities?
+    RasterCapsScrn = GetDeviceCaps(hDCSrc, RASTERCAPS) ' Raster
+    'Does our Picture2 use a palette?
+    HasPaletteScrn = RasterCapsScrn And RC_PALETTE ' Palette
+    'What's the size of that palette?
+    PaletteSizeScrn = GetDeviceCaps(hDCSrc, SIZEPALETTE) ' Size of
+
+    If HasPaletteScrn And (PaletteSizeScrn = 256) Then
+        'Set the palette version
+        LogPal.palVersion = &H300
+        'Number of palette entries
+        LogPal.palNumEntries = 256
+        'Retrieve the system palette entries
+        r = GetSystemPaletteEntries(hDCSrc, 0, 256, LogPal.palPalEntry(0))
+        'Create the palette
+        hpal = CreatePalette(LogPal)
+        'Select the palette
+        hPalPrev = SelectPalette(hDCMemory, hpal, 0)
+        'Realize the palette
+        r = RealizePalette(hDCMemory)
+    End If
+
+    'Copy the source image to our compatible device context
+    If myscale = 1 Then
+    r = BitBlt(hDCMemory, 0, 0, Width, Height, hDCSrc, 0, 0, vbSrcCopy)
+Else
+  Call SetStretchBltMode(hDCMemory, COLORONCOLOR)
+    r = StretchDIBits(hDCMemory, 0, 0, WidthSrc, HeightSrc, 0, 0, Width, Height, ByVal m_lPtr, m_tBI, DIB_RGB_COLORS, vbSrcCopy)
+End If
+    'Restore the old bitmap
+    hBmp = SelectObject(hDCMemory, hBmpPrev)
+
+    If HasPaletteScrn And (PaletteSizeScrn = 256) Then
+        'Select the palette
+        hpal = SelectPalette(hDCMemory, hPalPrev, 0)
+    End If
+
+    'Delete our memory DC
+    r = DeleteDC(hDCMemory)
+FreeHDC
+    Set Picture2 = CreateBitmapPicture(hBmp, hpal)
+End Function
 Function Picture(Optional myscale As Single = -1) As Picture
 Dim hDCSrc As Long, LeftSrc As Long, TopSrc As Long, WidthSrc As Long, HeightSrc As Long
-    Dim hDCMemory As Long, hbmp As Long, hBmpPrev As Long, r As Long
-    Dim hPal As Long, hPalPrev As Long, RasterCapsScrn As Long, HasPaletteScrn As Long
+    Dim hDCMemory As Long, hBmp As Long, hBmpPrev As Long, r As Long
+    Dim hpal As Long, hPalPrev As Long, RasterCapsScrn As Long, HasPaletteScrn As Long
     Dim PaletteSizeScrn As Long, LogPal As LOGPALETTE
     If myscale = -1 And Not wmfemf Is Nothing Then
     Set Picture = wmfemf
@@ -1751,9 +1846,9 @@ HeightSrc = Height * myscale
     'Create a compatible device context
     hDCMemory = CreateCompatibleDC(hDCSrc)
     'Create a compatible bitmap
-    hbmp = CreateCompatibleBitmap(hDCSrc, WidthSrc, HeightSrc)
+    hBmp = CreateCompatibleBitmap(hDCSrc, WidthSrc, HeightSrc)
     'Select the compatible bitmap into our compatible device context
-    hBmpPrev = SelectObject(hDCMemory, hbmp)
+    hBmpPrev = SelectObject(hDCMemory, hBmp)
 
     'Raster capabilities?
     RasterCapsScrn = GetDeviceCaps(hDCSrc, RASTERCAPS) ' Raster
@@ -1770,9 +1865,9 @@ HeightSrc = Height * myscale
         'Retrieve the system palette entries
         r = GetSystemPaletteEntries(hDCSrc, 0, 256, LogPal.palPalEntry(0))
         'Create the palette
-        hPal = CreatePalette(LogPal)
+        hpal = CreatePalette(LogPal)
         'Select the palette
-        hPalPrev = SelectPalette(hDCMemory, hPal, 0)
+        hPalPrev = SelectPalette(hDCMemory, hpal, 0)
         'Realize the palette
         r = RealizePalette(hDCMemory)
     End If
@@ -1785,18 +1880,19 @@ Else
     r = StretchDIBits(hDCMemory, 0, 0, WidthSrc, HeightSrc, 0, 0, Width, Height, ByVal m_lPtr, m_tBI, DIB_RGB_COLORS, vbSrcCopy)
 End If
     'Restore the old bitmap
-    hbmp = SelectObject(hDCMemory, hBmpPrev)
+    hBmp = SelectObject(hDCMemory, hBmpPrev)
 
     If HasPaletteScrn And (PaletteSizeScrn = 256) Then
         'Select the palette
-        hPal = SelectPalette(hDCMemory, hPalPrev, 0)
+        hpal = SelectPalette(hDCMemory, hPalPrev, 0)
     End If
 
     'Delete our memory DC
     r = DeleteDC(hDCMemory)
 FreeHDC
-    Set Picture = CreateBitmapPicture(hbmp, hPal)
+    Set Picture = CreateBitmapPicture(hBmp, hpal)
 End Function
+
 Public Function CreateFromPictureHandle( _
         ByRef picthandle As Long _
     ) As Boolean
@@ -1851,9 +1947,15 @@ Create picthis.Width * 0.567 / DXP, picthis.Height * 0.567 / DYP
 needHDC
 my_brush = CreateSolidBrush(m_backcolor)
 DrawIconEx HDC1, 0, 0, picthis, 0, 0, 0, my_brush, DI_IMAGE
+If IsWine Then
+' THIS DRAW  INVERt PIXELS AS TRANSPARENT
 DrawState HDC1, 0, 0, picthis.handle, 0, 0, 0, 0, 0, &H3
-'DI_MASK Or
-
+Else
+' THIS CONVERT INVERT PIXELS TO BLACK
+DrawState HDC1, 0, 0, picthis.handle, 0, 0, 0, 0, 0, &H83
+DrawState HDC1, 0, 0, picthis.handle, 0, 0, 0, 0, 0, &H3
+DrawState HDC1, 0, 0, picthis.handle, 0, 0, 0, 0, 0, &H3
+End If
 
 DeleteObject my_brush
 FreeHDC
@@ -1957,13 +2059,13 @@ Sub PageView(where As Object, Optional how As Long = -1, Optional vso As Object 
 Dim redX As Long, redY As Long, ss As Single, aa As Single
 
 Dim VredX As Long, VredY As Long
-Static Once As Boolean
+Static once As Boolean
 
-If Once Then Exit Sub
+If once Then Exit Sub
 If where.ScaleHeight < DXP Or where.ScaleWidth < DYP Then Exit Sub
 If how = -1 Then how = m_PageStyle
 m_PageStyle = how
-Once = True
+once = True
 'On Error GoTo there1
 If Not vso Is Nothing Then
  redX = vso.Width
@@ -2029,7 +2131,7 @@ End If
 End If
 If Not vso Is Nothing Then
 If vso.Visible Then
-vso.Max = Height * aa - (where.ScaleHeight - VredY) \ DYP
+vso.max = Height * aa - (where.ScaleHeight - VredY) \ DYP
 vso.smallchange = 1
 If (where.ScaleHeight - VredY) \ DYP > 0 Then vso.largechange = (where.ScaleHeight - VredY) \ DYP
 vso.Refresh
@@ -2039,7 +2141,7 @@ End If
 End If
 If Not hso Is Nothing Then
 If hso.Visible Then
-hso.Max = Width * aa - (where.ScaleWidth - VredX) \ DXP
+hso.max = Width * aa - (where.ScaleWidth - VredX) \ DXP
 hso.smallchange = 1
 If (where.ScaleWidth - VredX) \ DXP > 0 Then hso.largechange = (where.ScaleWidth - VredX) \ DXP
 hso.Refresh
@@ -2077,7 +2179,7 @@ End If
 If Not vso Is Nothing Then
 If vso.Visible Then
 'vso.Enabled = False
-vso.Max = Height * aa - where.ScaleHeight \ DYP
+vso.max = Height * aa - where.ScaleHeight \ DYP
 vso.smallchange = 1
 vso.largechange = where.ScaleHeight \ DYP
 vso.Refresh
@@ -2127,7 +2229,7 @@ End If
 End If
 If Not vso Is Nothing Then
 If vso.Visible Then
-vso.Max = Height - (where.ScaleHeight - VredY) \ DYP
+vso.max = Height - (where.ScaleHeight - VredY) \ DYP
 vso.smallchange = 1
 If (where.ScaleHeight - VredY) \ DYP > 0 Then vso.largechange = (where.ScaleHeight - VredY) \ DYP
 vso.Refresh
@@ -2137,7 +2239,7 @@ End If
 End If
 If Not hso Is Nothing Then
 If hso.Visible Then
-hso.Max = Width - (where.ScaleWidth - VredX) \ DXP
+hso.max = Width - (where.ScaleWidth - VredX) \ DXP
 hso.smallchange = 1
 If (where.ScaleWidth - VredX) \ DXP > 0 Then hso.largechange = (where.ScaleWidth - VredX) \ DXP
 hso.Refresh
@@ -2161,7 +2263,7 @@ where.gonia(gid).Visible = vso.Visible And hso.Visible
 End If
 End If
 where.Refresh
-Once = False
+once = False
 End Sub
 
 Public Sub ThumbnailPaintdib(DestPic As cDIBSection, Optional ByVal zf As Single = -1, Optional ByVal FitToPic As Boolean = True, Optional CROP As Boolean = False, Optional over As Boolean = False, Optional ByVal fr As Long = 0, Optional ByVal offsetx As Long = 0, Optional ByVal offsety As Long, Optional ByVal border As Long = 0, Optional ByVal rtxy As Double = 1#)
@@ -2271,7 +2373,7 @@ If zf = 1 Then
 'DestPic.Grami offsetx + border \ 2, offsety + border \ 2, offsetx + width - border \ 2, offsety + height * zf - border \ 2, border, backcolor
 
 Else
-DestPic.square offsetx + (DestPic.Width - Width * zf) / 2 - border, offsety + (DestPic.Height - Height * zf) / 2 - border, offsetx + (DestPic.Width - Width * zf) / 2 + Width * zf + border, offsety + (DestPic.Height - Height * zf) / 2 + Height * zf + border, BackColor
+DestPic.square offsetx + (DestPic.Width - Width * zf) / 2 - border, offsety + (DestPic.Height - Height * zf) / 2 - border, offsetx + (DestPic.Width - Width * zf) / 2 + Width * zf + border, offsety + (DestPic.Height - Height * zf) / 2 + Height * zf + border, backcolor
 End If
 End If
     
@@ -2281,10 +2383,10 @@ End If
   If border > 0 Then
 If zf = 1 Then
 border = border + 1
-DestPic.square offsetx, offsety, offsetx + Width - 1, offsety + border, BackColor '7
-DestPic.square offsetx + Width - border - 1, offsety, offsetx + Width - 1, offsety + Height - 1, BackColor
-DestPic.square offsetx, offsety + Height, offsetx + Width - 1, offsety + Height - 2 - border, BackColor  '8
-DestPic.square offsetx, offsety, offsetx + border, offsety + Height, BackColor
+DestPic.square offsetx, offsety, offsetx + Width - 1, offsety + border, backcolor '7
+DestPic.square offsetx + Width - border - 1, offsety, offsetx + Width - 1, offsety + Height - 1, backcolor
+DestPic.square offsetx, offsety + Height, offsetx + Width - 1, offsety + Height - 2 - border, backcolor  '8
+DestPic.square offsetx, offsety, offsetx + border, offsety + Height, backcolor
 
 Else
 
@@ -2302,14 +2404,14 @@ tp1:
     ' gdiflush
 End Sub
 
-Function ConvertWmftoEmF(hMF As Long) As Long
-Dim hEMF As Long
+Function ConvertWmftoEmF(hMf As Long) As Long
+Dim hEmf As Long
 Dim Bytes As Long
 Dim Buffer() As Byte
-Bytes = GetMetaFileBitsEx(hMF, Bytes, ByVal 0&)
+Bytes = GetMetaFileBitsEx(hMf, Bytes, ByVal 0&)
 If Bytes Then
 ReDim Buffer(1 To Bytes) As Byte
-Call GetMetaFileBitsEx(hMF, Bytes, Buffer(1))
+Call GetMetaFileBitsEx(hMf, Bytes, Buffer(1))
 Else
 
 Exit Function
@@ -2337,7 +2439,7 @@ Dim isbitmap As Boolean, okb As Boolean
                         hDIb = GlobalUnlock(hMem)
                         CloseClipboard
                         If Clipboard.GetFormat(2) Then
-                            CreateFromPicture Clipboard.GetData(2)
+                            CreateFromPicture Clipboard.getData(2)
                             okb = Height
                         End If
                     End If

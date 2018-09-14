@@ -202,7 +202,7 @@ Public Property Get Tag(Optional ByVal ExifTag As EXIF_TAG) As Variant
   ''If norest Then Exit Property
     If IsLoaded = False And m_file <> "" Then
         Load (m_file)
-    ElseIf IsLoaded = False And m_file = "" Then
+    ElseIf IsLoaded = False And m_file = vbNullString Then
   
         Exit Property
     End If
@@ -216,7 +216,7 @@ Public Property Get Tag(Optional ByVal ExifTag As EXIF_TAG) As Variant
     If IsLoaded = False Then Exit Property
     Dim i As Long
     On Error Resume Next
-    For i = 1 To No_of_Entries  'UBound(IFDDirectory)
+    For i = 1 To No_of_Entries
         If IFDDirectory(i).Tag_No = ExifTag Then
             Tag = IFDDirectory(i).Value
             Exit For
@@ -226,12 +226,10 @@ Public Property Get Tag(Optional ByVal ExifTag As EXIF_TAG) As Variant
 End Property
 
 Public Sub Load(Optional ByVal picFile As String)
-'Debug.Print "["; picFile; "]"
-''If norest Then Exit Sub
 If No_of_Entries > 0 Then Exit Sub
-    If m_file = "" Then
+    If m_file = vbNullString Then
         m_file = picFile
-        If m_file = "" Then
+        If m_file = vbNullString Then
             Exit Sub
         End If
     End If
@@ -270,7 +268,7 @@ Private Function OpenJPGFile(ByVal inFile As String)
     '  If norest Then Exit Function
     On Error GoTo aqw
      inFile = GetDosPath(inFile)
-  If inFile = "" Then GoTo aqw
+  If inFile = vbNullString Then GoTo aqw
     fFile = FreeFile
  qqq = FileLen(inFile)
  
@@ -287,7 +285,7 @@ ReDim ExifTemp(qqq) As Byte
 aqw:
     If fFile <> 0 Then Close #fFile
         ReDim ExifTemp(10) As Byte
-        m_file = ""
+        m_file = vbNullString
         IsLoaded = False
 End Function
 

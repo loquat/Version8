@@ -16,7 +16,9 @@ Option Explicit
  Private Type item
  Key As String
   ndx As Long
-  KeyType As Long  ' 0 as is , 1, reference/don't delete
+  KeyType As Integer  ' 0 as is , 1, reference/don't delete
+  originaltype As Byte
+  globalvar As Byte
  firsthash As Long
  lastpos As Long
  Pleft As Long  ' a list
@@ -67,32 +69,21 @@ Friend Sub ReduceHash(newTop As Long, v())
     
         If .Pleft > 0 Then
             Hash(.lastpos) = .Pleft
-            .Key = ""
+            .Key = vbNullString
             .Pleft = 0
         Else
             Hash(.lastpos) = 0
-            .Key = ""
+            .Key = vbNullString
         End If
         If .KeyType = 0 And .ndx >= 0 Then
             If IsObject(v(.ndx)) Then
-            GarbageCollector.Done = False
-           If Typename(v(.ndx)) = "mHandler" Then
-            If GarbageCollector.Find(objptr(v(.ndx).objref)) Then
-            ElseIf GarbageCollector.Find(objptr(v(.ndx))) Then
-            
-            End If
-            End If
-            
-            If GarbageCollector.Done Then
-            If GarbageCollector.ReferCountValue <= 2 Then
-                GarbageCollector.RemoveWithNoFind
-            End If
-            End If
-            Set v(.ndx) = Nothing
+             Set v(.ndx) = Nothing
             End If
             v(.ndx) = Empty
             End If
         .KeyType = 0
+        .globalvar = CByte(0)
+        .originaltype = CByte(0)
         .ndx = -1
             
         End With
@@ -127,9 +118,41 @@ Private Function Malloc() As Long
         toplim = toplim + 1
         Malloc = toplim
 End Function
-Property Get Count()
-Count = toplim + 1
+Property Get count()
+count = toplim + 1
 End Property
+Friend Function Find2(Key As String, num As Long, Optional checktype As Boolean, Optional isglobal As Boolean) As Boolean
+Dim k As Long
+num = 0
+
+If Len(Key) = 0 Then Exit Function
+k = Hash(HashFunc(Key)) - 1
+
+If k >= 0 Then
+Do
+    If PriveSpace(k).Key = Key Then
+    num = PriveSpace(k).ndx: Find2 = True: index = k:  checktype = PriveSpace(k).originaltype: isglobal = PriveSpace(k).globalvar: Exit Function
+    End If
+     k = PriveSpace(k).Pleft - 1
+Loop Until k < 0
+End If
+End Function
+Friend Function Find3(Key As String, num As Long, isglobal As Boolean) As Boolean
+Dim k As Long
+num = 0
+
+If Len(Key) = 0 Then Exit Function
+k = Hash(HashFunc(Key)) - 1
+
+If k >= 0 Then
+Do
+    If PriveSpace(k).Key = Key Then
+    num = PriveSpace(k).ndx: Find3 = True: index = k: isglobal = PriveSpace(k).globalvar: Exit Function
+    End If
+     k = PriveSpace(k).Pleft - 1
+Loop Until k < 0
+End If
+End Function
 Friend Function Find(Key As String, num As Long) As Boolean
 Dim k As Long
 num = 0
@@ -182,25 +205,24 @@ With PriveSpace(k)
 Loop Until k < 0
 End If
 End Function
-Friend Sub ItemCreator(Key As String, num As Long, Optional isref As Boolean = False)
+Friend Sub ItemCreator(Key As String, num As Long, Optional isref As Boolean = False, Optional isglobal As Boolean = False, Optional deftype As Boolean = False)
 Dim a As Long
 a = Malloc()
 On Error GoTo exxx
 With PriveSpace(a)
     .Key = Key
     .ndx = num
-    If isref Then
-        .KeyType = 1
-    Else
-        .KeyType = 0
-    End If
+    .KeyType = CByte(Abs(isref))
+    .originaltype = CByte(deftype)
+    .globalvar = CByte(isglobal)
     .firsthash = HashFunc0(Key)
+    
 End With
 place HashFunc(Key), a
 exxx:
 End Sub
 Property Get Percent()
-Percent = Count / hashlen
+Percent = count / hashlen
 End Property
 Private Sub place(ByVal b, ByVal a)
     Dim k As Long
@@ -250,14 +272,14 @@ End Function
 Private Function HashFunc(a$)
 HashFunc = MyMod(uintnew(HashFunc0(a$) Or &HAFFAFF7 + Len(a$) + hashlen + 1), hashlen)
 End Function
-Private Function MyMod(r1 As Double, po) As Double
+Private Function MyMod(r1, po) As Variant
 MyMod = r1 - Fix(r1 / po) * po
 End Function
-Private Function uintnew(ByVal a As Double) As Double
-If a > CDbl(2147483647) Then a = CDbl(2147483647)
-If a < CDbl(-2147483648#) Then a = CDbl(-2147483648#)
+Private Function uintnew(ByVal a As Currency) As Currency
+If a > 2147483647@ Then a = 2147483647@
+If a < -2147483648@ Then a = -2147483648@
 If a < 0 Then
-uintnew = 4294967296# + a
+uintnew = 4294967296@ + a
 Else
 uintnew = a
 End If

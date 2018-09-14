@@ -129,7 +129,7 @@ End Type
      pDefault As Any) As Long
 
       Private Declare Function DocumentProperties Lib "winspool.drv" _
-      Alias "DocumentPropertiesA" (ByVal hWnd As Long, _
+      Alias "DocumentPropertiesA" (ByVal hWND As Long, _
       ByVal hPrinter As Long, ByVal pDeviceName As String, _
        pDevModeOutput As Any, pDevModeInput As Any, ByVal fMode As Long) As Long
 
@@ -171,7 +171,7 @@ End Sub
         ByteToString = StripNulls(TempStr)
       End Function
 
-      Function ShowProperties(f As Object, szPrinterName As String, adevmode() As Byte) As Boolean
+      Function ShowProperties(F As Object, szPrinterName As String, adevmode() As Byte) As Boolean
       Dim hPrinter As Long, i As Long
       Dim nsize As Long
      '' Dim pDevMode As DEVMODE
@@ -202,8 +202,8 @@ End Sub
         
       '' Call CopyMemory(adevmode(1), pDevMode, Len(pDevMode))
    End If
-         If Not f Is Nothing Then
-          nsize = DocumentProperties(f.hWnd, hPrinter, szPrinterName, adevmode(1), adevmode(1), DM_PROMPT Or DM_IN_BUFFER Or DM_OUT_BUFFER)  '
+         If Not F Is Nothing Then
+          nsize = DocumentProperties(F.hWND, hPrinter, szPrinterName, adevmode(1), adevmode(1), DM_PROMPT Or DM_IN_BUFFER Or DM_OUT_BUFFER)  '
          Else
          nsize = DocumentProperties(0, hPrinter, szPrinterName, adevmode(1), adevmode(1), DM_IN_BUFFER Or DM_OUT_BUFFER)
         End If
@@ -259,7 +259,7 @@ PrinterCap = GetDeviceCaps(p_hdc, Cap)
 ret = DeleteDC(p_hdc)
 End Function
 
-Function ChangeOrientation(f As Object, szPrinterName As String, adevmode() As Byte) As Boolean
+Function ChangeOrientation(F As Object, szPrinterName As String, adevmode() As Byte) As Boolean
       Dim hPrinter As Long, i As Long
       Dim nsize As Long
       Dim pDevMode As DEVMODE
@@ -284,8 +284,8 @@ Function ChangeOrientation(f As Object, szPrinterName As String, adevmode() As B
           End If
    
    End If
-         If Not f Is Nothing Then
-          nsize = DocumentProperties(f.hWnd, hPrinter, szPrinterName, adevmode(1), adevmode(1), DM_PROMPT Or DM_OUT_BUFFER Or DM_IN_BUFFER)
+         If Not F Is Nothing Then
+          nsize = DocumentProperties(F.hWND, hPrinter, szPrinterName, adevmode(1), adevmode(1), DM_PROMPT Or DM_OUT_BUFFER Or DM_IN_BUFFER)
          Else
 
       
@@ -334,7 +334,7 @@ FileName = mylcasefILE(FileName)
 Dim b As Object
 Set b = CreateObject("wscript.shell")
 EXT = "." & Replace(UCase(EXT), ".", "")
-If FileName = "" Then Exit Sub
+If FileName = vbNullString Then Exit Sub
 b.regwrite "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" & ExtractNameOnly(FileName), FileName
 b.regwrite "HKCR\" & EXT & "\", FileType
 b.regwrite "HKCR\" & FileType & "\", EXT & " M2000 file"  'EXT & "_auto_file"
@@ -357,7 +357,7 @@ FileName = mylcasefILE(FileName)
 Dim b As Object
 Set b = CreateObject("wscript.shell")
 EXT = "." & ReplaceStr(".", "", EXT)
-If FileName = "" Then Exit Sub
+If FileName = vbNullString Then Exit Sub
 b.regdelete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" & ExtractNameOnly(FileName)
 b.regdelete "HKCR\" & EXT & "\" ', FileType
 b.regdelete "HKCR\" & FileType & "\shell\open\command\" ', Filename & " ""&l"" "
@@ -371,24 +371,25 @@ b.regdelete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\" 
 b.regdelete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\" & EXT & "\OpenWithList\"
 
 End Sub
-Function signlong(ByVal a As Double) As Double
+Function signlong(ByVal a As Currency) As Currency
 If a < 0 Then a = 0
-If a > 4294967295# Then a = 4294967295#
-If a > CDbl(2147483647) Then
-signlong = ((CDbl(&H80000000) + a) + CDbl(&H80000000)) ' And &HFFFFFFFF
+If a > 4294967295@ Then a = 4294967295@
+If a > 2147483647@ Then
+signlong = ((-2147483648@ + a) + -2147483648@)  ' And &HFFFFFFFF
 Else
 signlong = a
 End If
 End Function
-Function uintnew(ByVal a As Double) As Double
-If a > CDbl(2147483647) Then a = CDbl(2147483647)
-If a < CDbl(-2147483648#) Then a = CDbl(-2147483648#)
+Function uintnew(ByVal a As Currency) As Currency
+If a > 2147483647@ Then a = 2147483647@
+If a < -2147483648@ Then a = -2147483648@
 If a < 0 Then
-uintnew = 4294967296# + a
+uintnew = 4294967296@ + a
 Else
 uintnew = a
 End If
 End Function
+
 Function UINT(ByVal a As Long) As Long 'δίνει έναν integer σαν unsign integer σε long
  Dim b As Long
  b = a And &HFFFF
@@ -435,30 +436,12 @@ b = a
 Const bb = 65536
 HighWord = Int(b / bb)
 End Function
-Function cUlngFromVariant(ByVal c As Variant) As Long
-Dim a As Double
-On Error GoTo cu1
-a = Abs(Int(c))
-If a > CDbl(2147483647#) Then
-If a > CDbl(4294967296#) Then
-cUlngFromVariant = 0
-Else
-cUlngFromVariant = a - 4294967296#
-End If
-Else
-cUlngFromVariant = CLng(a)
-End If
-Exit Function
-cu1:
-cUlngFromVariant = 0
 
-
-End Function
-Function cUlng(ByVal a As Double) As Long ' πέρνει έναν unsign integer και τον κάνει νορμάλ χωρίς αλλαγή των bits
+Function cUlng(ByVal a As Currency) As Long ' πέρνει έναν unsign long και τον κάνει νορμάλ χωρίς αλλαγή των bits
 On Error GoTo cu1
 a = Abs(Int(a))
-If a > CDbl(2147483647#) Then
-cUlng = a - 4294967296#
+If a > 2147483647@ Then
+cUlng = a - 4294967296@
 Else
 cUlng = CLng(a)
 End If
@@ -474,19 +457,19 @@ End Function
 Function PACKLNG$(ByVal a As Double)
 PACKLNG$ = Right$("00000000" & Hex$(cUlng(a)), 8)
 End Function
-Function PACKLNG2$(ByVal a As Double)  ' with error return..
+Function PACKLNG2$(ByVal a As Currency)  ' with error return..
 ' this if only for print
 On Error GoTo cu22
 Dim internal As Long
 a = Int(a)
-If a > 4294967296# Then
+If a > 4294967296@ Then
 PACKLNG2$ = "???+"
 ElseIf a < 0 Then
 ' error
 PACKLNG2$ = "???-"
 Else
-    If a > CDbl(2147483647#) Then
-    internal = a - 4294967296#
+    If a > 2147483647@ Then
+    internal = a - 4294967296@
     Else
     internal = CLng(a)
     End If

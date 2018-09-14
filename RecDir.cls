@@ -42,9 +42,11 @@ dwReserved1 As Long
 cFileName(MAX_PATH * 2 - 1) As Byte
 cAlternate(14 * 2 - 1) As Byte
 End Type
-Private Declare Function FindFirstFile Lib "kernel32" Alias "FindFirstFileW" (ByVal lpFileName As Long, lpFindFileData As WIN32_FIND_DATA) As Long
+Private Declare Function CompareString Lib "KERNEL32" Alias "CompareStringW" (ByVal Locale As Long, ByVal dwCmpFlags As Long, ByVal lpString1 As Long, ByVal cchCount1 As Long, ByVal lpString2 As Long, ByVal cchCount2 As Long) As Long
 
-Private Declare Function FindNextFile Lib "kernel32" Alias "FindNextFileW" (ByVal hFindFile As Long, lpFindFileData As WIN32_FIND_DATA) As Long
+Private Declare Function FindFirstFile Lib "KERNEL32" Alias "FindFirstFileW" (ByVal lpFileName As Long, lpFindFileData As WIN32_FIND_DATA) As Long
+
+Private Declare Function FindNextFile Lib "KERNEL32" Alias "FindNextFileW" (ByVal hFindFile As Long, lpFindFileData As WIN32_FIND_DATA) As Long
 Private Declare Function FindClose Lib "kernel32.dll" (ByVal hFindFile As Long) As Long
 
 Dim myfile$(), myLevel() As Integer
@@ -61,25 +63,24 @@ Private mTopFolder As String
 Dim InUseItems As Long
 Public LevelStop As Long
 
-Private Declare Function GetDiskFreeSpace Lib "kernel32" _
+Private Declare Function GetDiskFreeSpace Lib "KERNEL32" _
  Alias "GetDiskFreeSpaceA" (ByVal lpRootPathName As String, _
  lpSectorsPerCluster As Long, lpBytesPerSector As Long, _
  lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) _
  As Long
-Private Declare Function GetLogicalDriveStrings Lib "kernel32" _
-  Alias "GetLogicalDriveStringsA" (ByVal nBufferLength As Long, _
-  ByVal lpBuffer As String) As Long
+Private Declare Function GetLogicalDriveStrings Lib "KERNEL32" _
+  Alias "GetLogicalDriveStringsW" _
+  (ByVal nBufferLength As Long, ByVal lpBuffer As Long) As Long
 
-
-Private Declare Function GetLongPathName Lib "kernel32" _
+Private Declare Function GetLongPathName Lib "KERNEL32" _
    Alias "GetLongPathNameW" _
   (ByVal lpszShortPath As Long, _
    ByVal lpszLongPath As Long, _
    ByVal cchBuffer As Long) As Long
 Public lastTimeStamp As Date
 Public lastTimeStamp2 As Date
-Private Declare Function FileTimeToSystemTime Lib "kernel32" (lpFileTime As FILETIME, lpSystemTime As SYSTEMTIME) As Long
-Private Declare Function FileTimeToLocalFileTime Lib "kernel32" (lpFileTime As FILETIME, lpLocalFileTime As FILETIME) As Long
+Private Declare Function FileTimeToSystemTime Lib "KERNEL32" (lpFileTime As FILETIME, lpSystemTime As SYSTEMTIME) As Long
+Private Declare Function FileTimeToLocalFileTime Lib "KERNEL32" (lpFileTime As FILETIME, lpLocalFileTime As FILETIME) As Long
 Public UseUTC As Boolean
 Private Function FileTimeToDate(File_Time As FILETIME) As Date
 Dim System_Time As SYSTEMTIME
@@ -122,15 +123,15 @@ Public Function GetLongName(strTest As String) As String
    Dim sLongPath As String
    Dim buff As String
    Dim cbbuff As Long
-   Dim result As Long
+   Dim Result As Long
  
    buff = Space$(MAX_PATH_UNICODE)
    cbbuff = Len(buff)
  
-   result = GetLongPathName(StrPtr(strTest), StrPtr(buff), cbbuff)
+   Result = GetLongPathName(StrPtr(strTest), StrPtr(buff), cbbuff)
  
-   If result > 0 Then
-      sLongPath = Left$(buff, result)
+   If Result > 0 Then
+      sLongPath = Left$(buff, Result)
    End If
  
    GetLongName = sLongPath
@@ -138,6 +139,7 @@ Public Function GetLongName(strTest As String) As String
 End Function
   Function TotalDiskSpace(DriveLetter As String) As Double
 ' Returns the total storage capacity for a drive
+On Error GoTo 100
 Dim Dletter As String, x As Long
 
     Dim SectorsPerCluster As Long
@@ -155,47 +157,52 @@ Dim Dletter As String, x As Long
     End If
     TotalDiskSpace = _
     Int(CDbl(SectorsPerCluster * BytesPerSector) * TotalClusters / 1024 / 1024)
+    Exit Function
+100
+    MsgBox "error at totaldiskspace"
 End Function
 Function NumberofDrives() As Integer
-' Returns the number of drives
-    Dim i As Integer
-    Dim Buffer As String * 255
-    Dim BuffLen As Long
-    Dim DriveCount As Integer
-   
-    BuffLen = GetLogicalDriveStrings(Len(Buffer), Buffer)
-    DriveCount = 0
-' Search for a null -- which separates the drives
-    For i = 1 To BuffLen
-        If Asc(Mid(Buffer, i, 1)) = 0 Then _
-          DriveCount = DriveCount + 1
-    Next i
-    NumberofDrives = DriveCount
-End Function
 
-Function DriveName(index As Integer) As String
-' Returns the drive letter using an index
-' Returns an empty string if index > number of drives
     Dim i As Integer
-    Dim Buffer As String * 255
+ 
+    
+    Dim Buffer As String
+    Buffer = String$(260, 0)
     Dim BuffLen As Long
     Dim TheDrive As String
     Dim DriveCount As Integer
-   
-    BuffLen = GetLogicalDriveStrings(Len(Buffer), Buffer)
-
-    TheDrive = ""
+    BuffLen = GetLogicalDriveStrings(MAX_FILENAME_LEN, StrPtr(Buffer))
     DriveCount = 0
+' Search for a null -- which separates the drives
     For i = 1 To BuffLen
-        If Asc(Mid(Buffer, i, 1)) <> 0 Then _
-          TheDrive = TheDrive & Mid(Buffer, i, 1)
-        If Asc(Mid(Buffer, i, 1)) = 0 Then 'null separates drives
+        If Asc(Mid$(Buffer, i, 1)) = 0 Then _
+          DriveCount = DriveCount + 1
+    Next i
+    NumberofDrives = DriveCount
+    Exit Function
+End Function
+
+Function DriveName(index As Integer) As String
+    Dim i As Integer
+    Dim Buffer As String
+    Buffer = String$(260, 0)
+    Dim BuffLen As Long
+    Dim TheDrive As String
+    Dim DriveCount As Integer
+    BuffLen = GetLogicalDriveStrings(MAX_FILENAME_LEN, StrPtr(Buffer))
+
+    TheDrive = vbNullString
+    DriveCount = 0
+    For i = 1 To IIf(BuffLen > 260, 260, BuffLen)
+        If Asc(Mid$(Buffer, i, 1)) <> 0 Then _
+          TheDrive = TheDrive & Mid$(Buffer, i, 1)
+        If Asc(Mid$(Buffer, i, 1)) = 0 Then 'null separates drives
             DriveCount = DriveCount + 1
             If DriveCount = index Then
                 DriveName = UCase(Left(TheDrive, 1))
                 Exit Function
             End If
-            TheDrive = ""
+            TheDrive = vbNullString
         End If
     Next i
 End Function
@@ -203,6 +210,7 @@ End Function
 
 Function FreeDiskSpace(DriveLetter As String) As Double
 ' Returns the number of free bytes for a drive
+On Error GoTo 400
 Dim Dletter As String, x As Double
     Dim SectorsPerCluster As Long
     Dim BytesPerSector As Long
@@ -219,6 +227,10 @@ Dim Dletter As String, x As Double
     End If
     FreeDiskSpace = _
       SectorsPerCluster * BytesPerSector * NumberofFreeClusters
+      Exit Function
+400
+      MsgBox "error at freediskspace"
+      
 End Function
 
 
@@ -291,7 +303,7 @@ InUseItems = 0
 End Sub
 Public Property Get list(index As Long) As String
 If index < 0 Then
-list = ""
+list = vbNullString
 Else
 If Not onetime Then onetime = True: once
 list = myfile$(index)
@@ -310,15 +322,15 @@ CheckFile = InStr(Filetypes2find, "|" & UCase(Mid$(expan$, InStrRev(expan$, ".")
 End If
 End Function
 
-Public Function Dir2(Optional ByVal ff As String = "", Optional FileType$ = "", Optional recursive As Boolean = True, Optional Append As Boolean = False) As String
+Public Function Dir2(Optional ByVal ff As String = vbNullString, Optional FileType$ = vbNullString, Optional recursive As Boolean = True, Optional Append As Boolean = False) As String
 Dim i As Integer
-If LastPath <> "" And ff = "" Then
+If LastPath <> "" And ff = vbNullString Then
 
 Else
 LastPath = ff
 
 Static ndx As Long
-If ff = "" Then
+If ff = vbNullString Then
 ClearList
 
 ndx = 0
@@ -365,7 +377,7 @@ Else
             ndx = ndx + 1   ' read with auto increment
             Else
             ndx = 0  ' reset
-                Dir2 = "" ' this is the end
+                Dir2 = vbNullString ' this is the end
             End If
 End If
 RaiseEvent DirFinished
@@ -433,7 +445,7 @@ End Function
 
 Public Function Dir1(ByVal ThisFile As String, curdir As String) As String
 
-    If curdir = "" Or ExtractPath(ThisFile) = ThisFile Then
+    If curdir = vbNullString Or ExtractPath(ThisFile) = ThisFile Then
     
       If ExistFolder(ThisFile) Then
       Dir1 = ThisFile
@@ -442,7 +454,7 @@ Public Function Dir1(ByVal ThisFile As String, curdir As String) As String
       Exit Function
     End If
 
-    If ExtractPath(ThisFile) = "" Then ThisFile = curdir & ThisFile
+    If ExtractPath(ThisFile) = vbNullString Then ThisFile = curdir & ThisFile
     If ExistFile(ThisFile) Then Dir1 = ThisFile
 End Function
 Private Function look(ByVal Level As Integer, ByVal folder As String, Optional offset As Long = 0, Optional foldersincluded As Boolean = False, Optional foldersonly As Boolean = False) As Long
@@ -479,22 +491,24 @@ End If
 If fhandle > 0 Then
 lookpath = StripNulls(wfd.cFileName)
 End If
-
-
-'' abort = True
-
 If Level = 3 Then mywait basestack1, 5
 
 While lookpath <> ""
+If Pattern <> "" Then
+If StripNulls(wfd.cAlternate) <> "" Then
+If Not LCase(lookpath) Like LCase(Pattern) Then
+      
+    GoTo conthere
+    End If
+End If
+End If
+
 If fff Mod 30 = 29 Then mywait basestack1, 1
     If isdirP(wfd) Or lookpath = ".." Then
-       '' If Right$("\" & lookpath, 2) = "\." Or Right$("\" & lookpath, 3) = "\.." Then
          If lookpath = "." Or lookpath = ".." Then
-        ' skip
         Else
         fff = fff + 1
         If fff > thatmaxtoo Then thatmaxtoo = thatmaxtoo * 2: ReDim Preserve fold$(1 To thatmaxtoo)
-        '' If foldersonly And level > 1 Then RaiseEvent feedback("\" & lookpath)
         If foldersonly Then RaiseEvent feedback("\" & lookpath)
         Select Case SortType
         Case 1, 2
@@ -520,23 +534,38 @@ If fff Mod 30 = 29 Then mywait basestack1, 1
         End Select
         End If
     End If
+conthere:
   If FindNextFile(fhandle, wfd) = 0& Then
-  lookpath = ""
+  lookpath = vbNullString
   Else
     lookpath = StripNulls(wfd.cFileName)
+  
     End If
 Wend
 FindClose fhandle
 ' #1
-' maybe we can hide that witha switch
+' maybe we can hide that with a switch
  If Level = 1 And folder <> "" And ((LCase(folder & "\") <> LCase(TopFolder)) Or (TopFolder = "\")) Then AddAFile "...", Level: addthis = addthis + 1  '  may we needaswitch here to exclude that
 If foldersonly Or foldersincluded Then
      ' #2
-    If fff > 0 Then QuickSortExtended fold$(), 1, fff      ' we can sort the folders here
+    If fff > 1 Then
+    If SortType <> 0 Then
+    QuickSortItemsFileNames fold$(), 1, fff      ' we can sort the folders here
+   ' QuickSortItemsNumbers fold$(), 1, fff
+    Else
+    QuickSortExtended fold$(), 1, fff
+    End If
+    End If
 End If
-    ' 3#  for each folder we  want to put  files  first and folders + files later...(this is myway)
+    ' 3#  for each folder we  want to put  files  first and folders + files later...(this is my way)
 If maxf > 0 Then
-     QuickSortExtended mf$(), 1, maxf
+
+    If SortType <> 0 Then
+    QuickSortItemsFileNames mf$(), 1, maxf
+    'QuickSortItemsNumbers mf$(), 1, maxf
+    Else
+    QuickSortExtended mf$(), 1, maxf
+    End If
     Select Case SortType
     Case 1
     For k = 1 To maxf
@@ -605,10 +634,10 @@ End Function
 
 Public Sub QuickSortExtended(Arr() As String, ByVal LB As Long, ByVal UB As Long)
 Dim M1 As Long, M2 As Long
-Dim Piv As String, Tmp As String '<- adjust types here, when switching to something different than Long
+Dim Piv As String, tmp As String '<- adjust types here, when switching to something different than Long
      If UB - LB = 1 Then
      M1 = LB
-      If Arr(M1) > Arr(UB) Then Tmp = Arr(M1): Arr(M1) = Arr(UB): Arr(UB) = Tmp
+      If Arr(M1) > Arr(UB) Then tmp = Arr(M1): Arr(M1) = Arr(UB): Arr(UB) = tmp
       Exit Sub
      Else
        M1 = (LB + UB) \ 2
@@ -618,7 +647,7 @@ Dim Piv As String, Tmp As String '<- adjust types here, when switching to someth
                 Do
                     M1 = M1 + 1
                     If M1 > M2 Then
-                        If Arr(UB) < Arr(LB) Then Tmp = Arr(LB): Arr(LB) = Arr(UB): Arr(UB) = Tmp
+                        If Arr(UB) < Arr(LB) Then tmp = Arr(LB): Arr(LB) = Arr(UB): Arr(UB) = tmp
                         Exit Sub
                     End If
                 Loop Until Arr(M1) <> Arr(LB)
@@ -634,7 +663,7 @@ Dim Piv As String, Tmp As String '<- adjust types here, when switching to someth
     Do
       Do While (Arr(M2) > Piv): M2 = M2 - 1: Loop
       If M1 <= M2 Then
-        Tmp = Arr(M1): Arr(M1) = Arr(M2): Arr(M2) = Tmp 'swap
+        tmp = Arr(M1): Arr(M1) = Arr(M2): Arr(M2) = tmp 'swap
         M1 = M1 + 1
         M2 = M2 - 1
       End If
@@ -644,6 +673,56 @@ Dim Piv As String, Tmp As String '<- adjust types here, when switching to someth
     If LB < M2 Then QuickSortExtended Arr, LB, M2
     If M1 < UB Then QuickSortExtended Arr, M1, UB
 End Sub
+Private Sub QuickSortItemsFileNames(Arr() As String, ByVal LB As Long, ByVal UB As Long)
+Dim M1 As Long, M2 As Long
+On Error GoTo abc1
+Dim Piv As String, tmp As String '<- adjust types here, when switching to something different than Long
+     If UB - LB = 1 Then
+     M1 = LB
+       If compareStr4(Arr(M1), Arr(UB)) = 1 Then tmp = Arr(M1): Arr(M1) = Arr(UB): Arr(UB) = tmp
+      Exit Sub
+     Else
+       M1 = (LB + UB) \ 2 '+ 1
+       Piv = Arr(M1)
+             If compareStr4(Arr(M1), Piv) = 0 Then
+                M2 = UB - 1
+                M1 = LB
+                Piv = Arr(LB)
+                Do
+                    M1 = M1 + 1
+                    If M1 > M2 Then
+                        If compareStr4(Arr(UB), Piv) = -1 Then tmp = Arr(LB): Arr(LB) = Arr(UB): Arr(UB) = tmp
+                        Exit Sub
+                    End If
+                Loop Until compareStr4(Arr(M1), Piv)
+                Piv = Arr(M1)
+                If M1 > LB Then If compareStr4(Arr(LB), Piv) = 1 Then tmp = Arr(LB): Arr(LB) = Arr(M1): Arr(M1) = tmp: Piv = Arr(M1)
+            Else
+                Piv = Arr(M1)
+                M1 = LB
+                Do While compareStr4(Arr(M1), Piv) = -1: M1 = M1 + 1: Loop
+            End If
+    End If
+    M2 = UB
+    Do
+      Do While compareStr4(Arr(M2), Piv) = 1: M2 = M2 - 1: Loop
+      If M1 <= M2 Then
+       If M1 <> M2 Then tmp = Arr(M1): Arr(M1) = Arr(M2): Arr(M2) = tmp
+        M1 = M1 + 1
+        M2 = M2 - 1
+      End If
+      If M1 > M2 Then Exit Do
+      Do While compareStr4(Arr(M1), Piv) = -1: M1 = M1 + 1: Loop
+    Loop
+    If LB < M2 Then QuickSortItemsFileNames Arr, LB, M2
+    If M1 < UB Then QuickSortItemsFileNames Arr, M1, UB
+    Exit Sub
+abc1:
+    
+
+End Sub
+
+
 Private Function IsSymbol3(a$, c$) As Boolean
 Dim b$
 b$ = NLtrim$(a$)
@@ -654,21 +733,21 @@ b$ = NLtrim$(a$)
 End If
 End If
 End Function
-Private Function PointPos(f$) As Long
+Private Function PointPos(F$) As Long
 Dim er As Long, er2 As Long
-While IsSymbol3(f$, """")
-f$ = GetStrUntil(Chr(34), f$)
+While IsSymbol3(F$, """")
+F$ = GetStrUntil(Chr(34), F$)
 Wend
 Dim i As Long, j As Long, oj As Long
-If f$ = "" Then
+If F$ = vbNullString Then
 PointPos = 1
 Else
 er = 3
 er2 = 3
-For i = 1 To Len(f$)
+For i = 1 To Len(F$)
 er = er + 1
 er2 = er2 + 1
-Select Case Mid$(f$, i, 1)
+Select Case Mid$(F$, i, 1)
 Case "."
 oj = j: j = i
 Case "\", "/", ":", Is = """"
@@ -692,27 +771,27 @@ End Select
 Next i
 If j = 0 Then
 If oj = 0 Then
-j = Len(f$) + 1
+j = Len(F$) + 1
 Else
 j = oj
 End If
 End If
-While Mid$(f$, j, i) = " "
+While Mid$(F$, j, i) = " "
 j = j - 1
 Wend
 PointPos = j
 End If
 End Function
-Public Function ExtractType(f$, Optional JJ As Long = 0) As String
+Public Function ExtractType(F$, Optional JJ As Long = 0) As String
 Dim i As Long, j As Long, d$
-If IsSymbol3(f$, """") Then f$ = GetStrUntil(Chr(34), f$)
-If f$ = "" Then ExtractType = "": Exit Function
+If IsSymbol3(F$, """") Then F$ = GetStrUntil(Chr(34), F$)
+If F$ = vbNullString Then ExtractType = vbNullString: Exit Function
 If JJ > 0 Then
 j = JJ
 Else
-j = PointPos(f$)
+j = PointPos(F$)
 End If
-d$ = f$ & " "
+d$ = F$ & " "
 If j < Len(d$) Then
 For i = j To Len(d$)
 Select Case Mid$(d$, i, 1)
@@ -722,78 +801,78 @@ Exit For
 End Select
 Next i
 If (i - j - 2) < 1 Then
-ExtractType = ""
+ExtractType = vbNullString
 Else
 ExtractType = Mid$(d$, j + 1, i - j - 2)
 End If
 Else
-ExtractType = ""
+ExtractType = vbNullString
 End If
 End Function
-Public Function ExtractPath(f$, Optional IsAfile As Boolean = True) As String
-If f$ = ".." Then ExtractPath = f$: Exit Function
+Public Function ExtractPath(F$, Optional IsAfile As Boolean = True) As String
+If F$ = ".." Then ExtractPath = F$: Exit Function
 Dim i As Long, j As Long
-j = PointPos(f$)
-If Mid$(f$, j, 1) = "." Then
+j = PointPos(F$)
+If Mid$(F$, j, 1) = "." Then
 '
 Else
-j = Len(f$)
+j = Len(F$)
 End If
 For i = j To 1 Step -1
-Select Case Mid$(f$, i, 1)
+Select Case Mid$(F$, i, 1)
 Case Is < " ", "\", "/", ":"
 Exit For
 End Select
 Next i
 If Not IsAfile Then
     For i = i - 1 To 1 Step -1
-    Select Case Mid$(f$, i, 1)
+    Select Case Mid$(F$, i, 1)
     Case Is < " ", "\", "/", ":"
     Exit For
     End Select
     Next i
 End If
 If i = 0 Then
-ExtractPath = ""
+ExtractPath = vbNullString
 Else
-ExtractPath = Mid$(f$, 1, i)
+ExtractPath = Mid$(F$, 1, i)
 End If
 End Function
-Public Function ExtractName(f$) As String
+Public Function ExtractName(F$) As String
 Dim i As Long, j As Long, k$
-If f$ = "" Then Exit Function
-j = PointPos(f$)
-If Mid$(f$, j, 1) = "." Then
-k$ = ExtractType(f$, j)
+If F$ = vbNullString Then Exit Function
+j = PointPos(F$)
+If Mid$(F$, j, 1) = "." Then
+k$ = ExtractType(F$, j)
 Else
-j = Len(f$)
+j = Len(F$)
 End If
 For i = j To 1 Step -1
-Select Case Mid$(f$, i, 1)
+Select Case Mid$(F$, i, 1)
 Case Is < " ", "\", "/", ":"
 Exit For
 End Select
 Next i
-If k$ = "" Then
-If Mid$(f$, i + j - i, 1) = "." Then
-ExtractName = Mid$(f$, i + 1, j - i - 1)
+If k$ = vbNullString Then
+If Mid$(F$, i + j - i, 1) = "." Then
+ExtractName = Mid$(F$, i + 1, j - i - 1)
 Else
-ExtractName = Mid$(f$, i + 1, j - i)
+ExtractName = Mid$(F$, i + 1, j - i)
 
 End If
 Else
-ExtractName = Mid$(f$, i + 1, j - i) + k$
+ExtractName = Mid$(F$, i + 1, j - i) + k$
 End If
 
 End Function
-Public Function isReadOnly(ByVal f$) As Boolean
+Public Function isReadOnly(ByVal F$) As Boolean
 Dim v&
 
 Err.Clear
 On Error Resume Next
-If Right$(f$, 1) = "\" Then f$ = Mid$(f$, 1, Len(f$) - 1)
-If f$ <> "" Then
-If FileAttr(f$, v&) Then isReadOnly = (v& And 1) > 0 Else isReadOnly = True
+If Right$(F$, 1) = "\" Then F$ = Mid$(F$, 1, Len(F$) - 1)
+If F$ <> "" Then
+If FileAttr(F$, v&) Then isReadOnly = (v& And 1) > 0 Else isReadOnly = True
 
 Else
 isReadOnly = True
@@ -803,12 +882,12 @@ End Function
 Private Function isdirP(wfd As WIN32_FIND_DATA) As Boolean
 isdirP = (wfd.dwFileAttributes And 16) > 0
 End Function
-Public Function isdir(f$) As Boolean
+Public Function isdir(F$) As Boolean
 Dim v&
 Err.Clear
-If f$ = "" Then Exit Function
+If F$ = vbNullString Then Exit Function
 On Error Resume Next
-If FileAttr(f$, v&) Then
+If FileAttr(F$, v&) Then
 isdir = (v& And 16) > 0
 End If
 End Function
@@ -821,11 +900,11 @@ ReDim myLevel(100) As Integer
 End Sub
 Public Function GetStrUntil(ByVal sStr As String, fromStr As String, Optional RemoveSstr As Boolean = True) As String
 Dim i As Long
-If fromStr = "" Then GetStrUntil = "": Exit Function
+If fromStr = vbNullString Then GetStrUntil = vbNullString: Exit Function
 i = InStr(fromStr, sStr)
 If (i < 2) And Not ((i > 0) And RemoveSstr) Then
-GetStrUntil = ""
-fromStr = ""
+GetStrUntil = vbNullString
+fromStr = vbNullString
 Else
 GetStrUntil = Left$(fromStr, i - 1)
 If RemoveSstr Then
@@ -841,7 +920,7 @@ i = InStr(fromStr, uStr)
 If i > 0 Then
 fromStr = Mid$(fromStr, i + Len(uStr))
 Else
-fromStr = ""
+fromStr = vbNullString
 End If
 End Sub
 Private Function StripNulls(ByVal OriginalStr As String) As String
@@ -879,9 +958,332 @@ End Sub
 Private Function myFILEDATeTIME(aa As FILETIME) As String
 ' i need 14 bytes,
 myFILEDATeTIME = Right$("00000000000000" & Hex$(aa.dwHighDateTime) + Left$("0000" + Hex$(HighWord((aa.dwLowDateTime))), 4), 14)
+End Function
+Function compareStr4(ByVal a$, ByVal b$) As Long
+Const useclid = 0&
+Dim a0$, b0$
+a$ = LCase(a$)
+b$ = LCase(b$)
+If CompareString(useclid, 0, StrPtr(a$), Len(a$), StrPtr(b$), Len(a$)) = 2 Then Exit Function
+a0$ = Mid$(a$, InStrRev(a$, ".") + 1)
+If Len(a0$) = Len(a$) Then a0$ = "" Else a$ = Left$(a$, Len(a$) - Len(a0$) - 1)
 
+b0$ = Mid$(b$, InStrRev(b$, ".") + 1)
+If Len(b0$) = Len(b$) Then b0$ = "" Else b$ = Left$(b$, Len(b$) - Len(b0$) - 1)
+'GoTo 1111
+Select Case CompareString(useclid, 0, StrPtr(a0$), Len(a0$), StrPtr(b0$), Len(a0$))
+    Case 1
+    compareStr4 = -1
+    Exit Function
+    Case 3
+    compareStr4 = 1
+    
+End Select
 
+Dim i As Long, j As Long, a1$, b1$, p1 As Double, p2 As Double, k As Long, k1 As Long
+k = Sgn(Len(a$) - Len(b$))
+k1 = k
+Dim once As Boolean
+again:
+j = IIf(Len(a$) >= Len(b$), Len(b$), Len(a$))
+For i = 1 To j
 
+    If Mid$(a$, i, 1) Like "[0-9]" Then
+    a1$ = Mid$(a$, i)
+    b1$ = Mid$(b$, i)
+        IsNumberInFilename a1$, p1
+        If IsNumberInFilename(b1$, p2) Then
+            compareStr4 = Sgn(MyRound(p1, 8) - MyRound(p2, 8))
+            If compareStr4 = 0 Then
+                If Len(a1$) * Len(b1$) <> 0 Then
+                    k = Sgn(Len(a1$) - Len(b1$))
+                    a$ = a1$
+                    b$ = b1$
+                   
+                    GoTo again
+                End If
+                If Len(a1$) + Len(b1$) = 0 Then
+                    compareStr4 = k
+                Else
+                    compareStr4 = Sgn(Len(a1$) - Len(b1$))
+                End If
+                Exit Function
+            End If
+            Exit Function
+        Else
+        a$ = Mid$(a$, i)
+    b$ = Mid$(b$, i)
+    IsNumberInFilename a$, p1
+       
+          If Len(a$) > 0 Then
+       
+            Select Case CompareString(useclid, &H1000, StrPtr(a$), Len(a$), StrPtr(b$), Len(b$))
+                Case 1, 3
+                compareStr4 = -1
+                Case 2
+                If k > 0 Then
+                compareStr4 = -1
+                Else
+                compareStr4 = 1
+                End If
+            End Select
+        Else
+        compareStr4 = -1
+        End If
+        End If
+        Exit Function
+    ElseIf Mid$(b$, i, 1) Like "[0-9]" Then
+    a$ = Mid$(a$, i)
+    b$ = Mid$(b$, i)
+    IsNumberInFilename b$, p1
+    If Len(b$) > 0 Then
+       
+            Select Case CompareString(useclid, &H1000, StrPtr(a$), Len(a$), StrPtr(b$), Len(b$))
+                Case 3
+                compareStr4 = 1
+                Case 1, 2
+                If k < 0 Then
+                compareStr4 = 1
+                Else
+                compareStr4 = -1
+                End If
+                
+                
+            End Select
+        Else
+        compareStr4 = 1
+        End If
+        Exit Function
+    End If
+    compareStr4 = -2 + CompareString(useclid, 0, StrPtr(a$) + i * 2 - 2, 1, StrPtr(b$) + i * 2 - 2, 1)
+    If compareStr4 <> 0 Then
+    Exit Function
+    End If
+Next i
+compareStr4 = Sgn(Len(a$) - Len(b$))
+If compareStr4 = 0 Then compareStr4 = k1
+End Function
+Function compareStr444(ByVal a$, ByVal b$) As Long
+Const useclid = 0&
+Dim a0$, b0$
+a$ = LCase(a$)
+b$ = LCase(b$)
+a0$ = Mid$(a$, InStrRev(a$, ".") + 1)
+If Len(a0$) = Len(a$) Then a0$ = "" Else a$ = Left$(a$, Len(a$) - Len(a0$) - 1)
+
+b0$ = Mid$(b$, InStrRev(b$, ".") + 1)
+If Len(b0$) = Len(b$) Then b0$ = "" Else b$ = Left$(b$, Len(b$) - Len(b0$) - 1)
+'GoTo 1111
+Select Case CompareString(useclid, 0, StrPtr(a0$), Len(a0$), StrPtr(b0$), Len(a0$))
+    Case 1
+    compareStr444 = -1
+    Exit Function
+    Case 3
+    compareStr444 = 1
+    
+End Select
+
+1111
+If CompareString(useclid, 0, StrPtr(a$), Len(a$), StrPtr(b$), Len(a$)) = 2 Then Exit Function
+Dim i As Long, j As Long, a1$, b1$, p1 As Double, p2 As Double, k As Long, k1 As Long
+k = Sgn(Len(a$) - Len(b$))
+k1 = k
+Dim once As Boolean
+again:
+j = IIf(Len(a$) >= Len(b$), Len(b$), Len(a$))
+
+For i = 1 To j
+    If Mid$(a$, i, 1) Like "[0-9]" Then
+        a1$ = Mid$(a$, i)
+        b1$ = Mid$(b$, i)
+        IsNumberInFilename a1$, p1
+        If IsNumberInFilename(b1$, p2) Then
+            compareStr444 = Sgn(MyRound(p1 - p2))
+            If compareStr444 = 0 Then
+                If Len(a1$) * Len(b1$) <> 0 Then
+                    k = Sgn(Len(a1$) - Len(b1$))
+                    a$ = a1$
+                    b$ = b1$
+                    GoTo again
+                End If
+                If Len(a1$) + Len(b1$) = 0 Then
+                    compareStr444 = k
+                Else
+                    compareStr444 = Sgn(Len(a1$) - Len(b1$))
+                Exit Function
+                End If
+            End If
+            Exit Function
+        Else
+        a$ = Mid$(a$, i)
+        b$ = Mid$(b$, i)
+        IsNumberInFilename a$, p1
+        If once Then
+        compareStr444 = -1
+        ElseIf Len(a$) > 0 Then
+            Select Case CompareString(useclid, &H1000, StrPtr(a$), Len(a$), StrPtr(b$), Len(b$))
+            Case 1
+            compareStr444 = -1
+            Case 3
+            compareStr444 = 1
+            Case 2
+        
+                compareStr444 = 1
+                
+            End Select
+        Else
+        compareStr444 = -1
+        End If
+        End If
+        Exit Function
+    ElseIf Mid$(b$, i, 1) Like "[0-9]" Then
+    a$ = Mid$(a$, i)
+    b1$ = Mid$(b$, i)
+    IsNumberInFilename b1$, p1
+    
+     If once Then
+        compareStr444 = 1
+        ElseIf Len(b$) > 0 Then
+            Select Case CompareString(useclid, &H1000, StrPtr(a$), Len(a$), StrPtr(b1$), Len(b1$))
+                Case 3
+                compareStr444 = 1
+                Case 1
+                compareStr444 = -1
+                Case 2
+                compareStr444 = -1
+            End Select
+        Else
+        compareStr444 = 1
+        End If
+        Exit Function
+    End If
+    once = False
+    compareStr444 = -2 + CompareString(useclid, 0, StrPtr(a$) + i * 2 - 2, 1, StrPtr(b$) + i * 2 - 2, 1)
+    If compareStr444 <> 0 Then Exit Function
+Next i
+compareStr444 = Sgn(Len(a$) - Len(b$))
+If compareStr444 = 0 Then compareStr444 = k1
 
 End Function
+
+Sub QuickSortItemsNumbers(Arr() As String, ByVal LB As Long, ByVal UB As Long)
+Dim M1 As Long, M2 As Long
+On Error GoTo abc1
+Dim Piv As String, tmp As String '<- adjust types here, when switching to something different than Long
+     If UB - LB = 1 Then
+     M1 = LB
+       If compareStr4(Arr(M1), Arr(UB)) = 1 Then tmp = Arr(M1): Arr(M1) = Arr(UB): Arr(UB) = tmp
+      Exit Sub
+     Else
+       M1 = (LB + UB) \ 2 '+ 1
+       Piv = Arr(M1)
+             If compareStr4(Arr(M1), Piv) = 0 Then
+                M2 = UB - 1
+                M1 = LB
+                Piv = Arr(LB)
+                
+                Do
+                    M1 = M1 + 1
+                    If M1 > M2 Then
+                        If compareStr4(Arr(UB), Piv) = -1 Then tmp = Arr(LB): Arr(LB) = Arr(UB): Arr(UB) = tmp
+                        Exit Sub
+                    End If
+                Loop Until compareStr4(Arr(M1), Piv) <> 0
+                Piv = Arr(M1)
+                If M1 > LB Then If compareStr4(Arr(LB), Piv) = 1 Then tmp = Arr(LB): Arr(LB) = Arr(M1): Arr(M1) = tmp: Piv = Arr(M1)
+            Else
+                Piv = Arr(M1)
+                M1 = LB
+                Do While compareStr4(Arr(M1), Piv) = -1: M1 = M1 + 1: Loop
+            End If
+    End If
+    M2 = UB
+    Do
+      Do While compareStr4(Arr(M2), Piv) = 1: M2 = M2 - 1: Loop
+      If M1 <= M2 Then
+       If M1 <> M2 Then tmp = Arr(M1): Arr(M1) = Arr(M2): Arr(M2) = tmp
+        M1 = M1 + 1
+        M2 = M2 - 1
+      End If
+      If M1 > M2 Then Exit Do
+      Do While compareStr4(Arr(M1), Piv) = -1: M1 = M1 + 1: Loop
+    Loop
+    If LB < M2 Then QuickSortItemsNumbers Arr, LB, M2
+    If M1 < UB Then QuickSortItemsNumbers Arr, M1, UB
+    Exit Sub
+abc1:
+    
+
+End Sub
+
+Function IsNumberInFilename1(a$, p As Double) As Boolean
+Dim a1 As Long, LI As Long, A2 As Long
+LI = Len(a$)
+If LI > 0 Then
+a1 = 1
+A2 = 1
+If a1 > LI Then a$ = vbNullString: Exit Function
+If LI > 100 + A2 Then LI = 99 + A2
+If Mid$(a$, a1, 1) Like "[0-9]" Then
+Do While a1 <= LI
+a1 = a1 + 1
+If Not Mid$(a$, a1, 1) Like "[0-9]" Then Exit Do
+
+Loop
+p = val(Mid$(a$, A2, a1 - A2)): a$ = Mid$(a$, a1)
+IsNumberInFilename1 = True
+End If
+
+End If
+End Function
+Private Function IsNumberInFilename(a$, d As Double) As Boolean
+Dim a1 As Long
+'Exit Function
+If a$ <> "" Then
+a1 = Len(a$)
+
+If IsNumberOnly(a$, 1, d, a1) Then
+a$ = Mid$(a$, a1)
+IsNumberInFilename = True
+Else
+IsNumberInFilename = False
+End If
+Else
+IsNumberInFilename = False
+End If
+End Function
+Private Function IsNumberOnly(a$, fr As Long, r As Double, lr As Long) As Boolean
+Dim SG As Long, i As Long, ig$
+If a$ = vbNullString Then IsNumberOnly = False: Exit Function
+i = fr
+
+
+If val("0" & Mid$(a$, i, 1)) = 0 And Left(Mid$(a$, i, 1), i) <> "0" And Left(Mid$(a$, i, 1), i) <> "." Then
+IsNumberOnly = False
+
+Else
+    Do While i <= Len(a$)
+        
+        Select Case Mid$(a$, i, 1)
+        Case "0" To "9"
+        ig$ = ig$ & Mid$(a$, i, 1)
+        Case Else
+        Exit Do
+        End Select
+       i = i + 1
+    Loop
+    End If
+    
+    If ig$ = vbNullString Then
+    IsNumberOnly = False
+    lr = 1
+    Else
+    r = val(ig$)
+    lr = i - fr + 1
+    IsNumberOnly = True
+End If
+
+End Function
+
+
 

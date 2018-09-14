@@ -6,7 +6,7 @@ Option Explicit
 ' event support for Late-Bound objects
 ' low level COM Projekt - by [rm_code] 2005
 Private Declare Function ObjSetAddRef Lib "msvbvm60.dll" Alias "__vbaObjSetAddref" (ByRef objDest As Object, ByVal pObject As Long) As Long
-
+Private Declare Sub VariantCopy Lib "OleAut32.dll" (pvargDest As Long, pvargSrc As Long)
 'Public Type GUID
 '    data1       As Long
 '    data2       As Integer
@@ -22,10 +22,10 @@ Public Type EventSink
     hMem        As Long     ' memory address
 End Type
 ' for DEP
-Private Declare Function VirtualAlloc Lib "kernel32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal flAllocationType As Long, ByVal flProtect As Long) As Long
-Private Declare Function VirtualFree Lib "kernel32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal dwFreeType As Long) As Long
-Private Declare Function VirtualLock Lib "kernel32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
-Private Declare Function VirtualUnlock Lib "kernel32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
+Private Declare Function VirtualAlloc Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal flAllocationType As Long, ByVal flProtect As Long) As Long
+Private Declare Function VirtualFree Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal dwFreeType As Long) As Long
+Private Declare Function VirtualLock Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
+Private Declare Function VirtualUnlock Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
 Private Const MEM_DECOMMIT = &H4000
 Private Const MEM_RELEASE = &H8000
 Private Const MEM_COMMIT = &H1000
@@ -48,10 +48,10 @@ Public Declare Function SysReAllocString Lib "oleaut32" ( _
 Public Declare Function VarPtrArray Lib "msvbvm60" Alias "VarPtr" ( _
     PtrDest() As Any) As Long
 
-Public Declare Sub CpyMem Lib "kernel32" Alias "RtlMoveMemory" ( _
+Public Declare Sub CpyMem Lib "KERNEL32" Alias "RtlMoveMemory" ( _
     pDst As Any, pSrc As Any, ByVal dwLen As Long)
 
-Public Declare Sub FillMem Lib "kernel32" Alias "RtlFillMemory" ( _
+Public Declare Sub FillMem Lib "KERNEL32" Alias "RtlFillMemory" ( _
     pDst As Any, ByVal dlen As Long, ByVal Fill As Byte)
 
 Public Declare Function IsEqualGUID Lib "ole32" ( _
@@ -60,13 +60,13 @@ Public Declare Function IsEqualGUID Lib "ole32" ( _
 Public Declare Function CLSIDFromString Lib "ole32" ( _
     ByVal lpsz As Long, GUID As Any) As Long
 
-Public Declare Function GlobalAlloc Lib "kernel32" ( _
+Public Declare Function GlobalAlloc Lib "KERNEL32" ( _
     ByVal uFlags As Long, ByVal dwBytes As Long) As Long
 
-Public Declare Function GlobalFree Lib "kernel32" ( _
+Public Declare Function GlobalFree Lib "KERNEL32" ( _
     ByVal hMem As Long) As Long
 
-Public Declare Function LCID_def1 Lib "kernel32" Alias "GetSystemDefaultLCID" ( _
+Public Declare Function LCID_def1 Lib "KERNEL32" Alias "GetSystemDefaultLCID" ( _
     ) As Long
 
 Private Const E_NOINTERFACE As Long = &H80004002
@@ -98,7 +98,35 @@ Private ObjExt_vtbl(6) As Long
 ''get lcid_def1() once
 Public LCID_DEF As Long
 
+Private Type IUnknown100
+    QueryInterface              As Long
+    AddRef                      As Long
+    Release                     As Long
+End Type
+Private Type IEnum100
+    iunk                        As IUnknown100
+    Next                        As Long
+    skip                        As Long
+    Reset                       As Long
+    Clone                       As Long
+End Type
 
+Public Function GetNext(pECP As Long, usethis As Variant) As Boolean
+Dim hRet As Long
+Dim cReturned   As Long
+Dim pVTblECP    As Long
+Dim oECP        As IEnum100
+Dim pCP         As Long
+    CpyMem pVTblECP, ByVal pECP, 4
+    CpyMem oECP, ByVal pVTblECP, Len(oECP)
+
+hRet = CallPointer(oECP.Next, pECP, 1, VarPtr(usethis), VarPtr(cReturned))
+
+If hRet Then Exit Function
+If cReturned = 0 Then Exit Function
+GetNext = True
+
+End Function
 
 Public Sub InitObjExtender()
     Static blnInit  As Boolean
@@ -166,13 +194,13 @@ Private Function ObjExt_GetTypeInfoCount(this As EventSink, pctinfo As Long) As 
 End Function
 
 ' IDispatch::GetTypeInfo
-Private Function ObjExt_GetTypeInfo(this As EventSink, ByVal iTInfo As Long, ByVal LCID As Long, ppTInfo As Long) As Long
+Private Function ObjExt_GetTypeInfo(this As EventSink, ByVal iTInfo As Long, ByVal lcid As Long, ppTInfo As Long) As Long
     ppTInfo = 0
     ObjExt_GetTypeInfo = E_NOTIMPL
 End Function
 
 ' IDispatch::GetIDsOfNames
-Private Function ObjExt_GetIDsOfNames(this As EventSink, riid As GUID, rgszNames As Long, ByVal cNames As Long, ByVal LCID As Long, rgDispId As Long) As Long
+Private Function ObjExt_GetIDsOfNames(this As EventSink, riid As GUID, rgszNames As Long, ByVal cNames As Long, ByVal lcid As Long, rgDispId As Long) As Long
     ObjExt_GetIDsOfNames = E_NOTIMPL
 End Function
 
@@ -180,7 +208,7 @@ End Function
 Private Function ObjExt_Invoke(this As EventSink, _
          ByVal dispIdMember As Long, _
          riid As GUID, _
-         ByVal LCID As Long, _
+         ByVal lcid As Long, _
          ByVal wFlags As Integer, _
          ByVal pDispParams As Long, _
          ByVal pVarResult As Long, _
@@ -203,7 +231,7 @@ Public Function CreateEventSink(IID As GUID, objext As ComShinkEvent) As Object
     With sink
         .cRef = 1
         .IID = IID
-        .pClass = objptr(objext)
+        .pClass = ObjPtr(objext)
         .pVTable = VarPtr(ObjExt_vtbl(0))
     End With
 
@@ -221,7 +249,7 @@ Private Function addr(p As Long) As Long
 End Function
 
 ' Pointer->Object
-Private Function ResolveObjPtr(ByVal Ptr As Long) As IUnknown
+Public Function ResolveObjPtr(ByVal Ptr As Long) As IUnknown
     'Dim oUnk As IUnknown
 ObjSetAddRef ResolveObjPtr, Ptr
     'CpyMem oUnk, Ptr, 4&
@@ -229,6 +257,11 @@ ObjSetAddRef ResolveObjPtr, Ptr
     'CpyMem oUnk, 0&, 4&
 End Function
 ' ObjSetAddRef ObjectFromPtr, Ptr
+
+Public Function GetEnumarator(uOnk As IUnknown) As Boolean
+GetEnumarator = True
+End Function
+
 
 Public Function CallPointer(ByVal fnc As Long, ParamArray params()) As Long
 Static once As Boolean
@@ -264,9 +297,7 @@ Dim btASM As Long
                 AddPush pASM, CLng(params(0)(i))    ' PUSH dword
             Next
         Else
-            For i = UBound(params) To 0 Step -1
-                AddPush pASM, CLng(params(i))       ' PUSH dword
-            Next
+           AddPush pASM, CLng(params(0))       ' PUSH dword
         End If
     Else
         For i = UBound(params) To 0 Step -1
@@ -279,7 +310,8 @@ Dim btASM As Long
 
     CallPointer = CallWindowProcA(btASM, _
                                   0, 0, 0, 0)
-            VirtualUnlock btASM, MAXCODE
+            
+             VirtualUnlock btASM, MAXCODE
         VirtualFree btASM, MAXCODE, MEM_DECOMMIT
         VirtualFree btASM, 0, MEM_RELEASE
     '    Debug.Print btASM

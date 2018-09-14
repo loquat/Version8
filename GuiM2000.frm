@@ -1,13 +1,14 @@
 VERSION 5.00
 Begin VB.Form GuiM2000 
+   Appearance      =   0  'Flat
    AutoRedraw      =   -1  'True
    BackColor       =   &H003B3B3B&
    BorderStyle     =   0  'None
-   Caption         =   "aaa"
    ClientHeight    =   4620
    ClientLeft      =   0
    ClientTop       =   0
    ClientWidth     =   9210
+   ControlBox      =   0   'False
    BeginProperty Font 
       Name            =   "Arial"
       Size            =   12
@@ -71,6 +72,26 @@ Attribute VB_Exposed = False
 Option Explicit
 Private Declare Function CopyFromLParamToRect Lib "user32" Alias "CopyRect" (lpDestRect As RECT, ByVal lpSourceRect As Long) As Long
 Private Declare Function DestroyCaret Lib "user32" () As Long
+Private Declare Function DrawIconEx Lib "user32" (ByVal hDC As Long, ByVal xLeft As Long, ByVal yTop As Long, ByVal hIcon As Long, ByVal cxWidth As Long, ByVal cyWidth As Long, ByVal istepIfAniCur As Long, ByVal hbrFlickerFreeDraw As Long, ByVal diFlags As Long) As Long
+Private Declare Function DrawState Lib "user32" Alias "DrawStateA" _
+        (ByVal hDC As Long, _
+        ByVal hBrush As Long, _
+        ByVal lpDrawStateProc As Long, _
+        ByVal lParam As Long, _
+        ByVal wParam As Long, _
+        ByVal x As Long, _
+        ByVal y As Long, _
+        ByVal cX As Long, _
+        ByVal cY As Long, _
+        ByVal fuFlags As Long) As Long
+Private Declare Function GetModuleHandleW Lib "KERNEL32" (ByVal lpModuleName As Long) As Long
+Private Declare Function GetProcAddress Lib "KERNEL32" (ByVal hModule As Long, ByVal lpProcName As String) As Long
+Private Declare Function GetWindowLongA Lib "user32" (ByVal hWND As Long, ByVal nIndex As Long) As Long
+Private Declare Function SetWindowLongA Lib "user32" (ByVal hWND As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
+Private Declare Function SetWindowLongW Lib "user32" (ByVal hWND As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
+Private Declare Function SetWindowTextW Lib "user32" (ByVal hWND As Long, ByVal lpString As Long) As Long
+    Private Const GWL_WNDPROC = -4
+    Private m_Caption As String
 Dim setupxy As Single
 Dim Lx As Single, ly As Single, dr As Boolean
 Dim scrTwips As Long
@@ -78,71 +99,190 @@ Dim bordertop As Long, borderleft As Long
 Dim allwidth As Long, itemWidth As Long
 Private ExpandWidth As Boolean, lastfactor As Single
 Private myEvent As mEvent
+Private ttl As Boolean, drawminimized As Boolean
 Private GuiControls As New Collection
-'Dim gList1 As gList
 Dim onetime As Boolean, PopupOn As Boolean
 Dim alfa As New GuiButton
-Public MyName$
 Public modulename$
 Public prive As Long
 Private ByPassEvent As Boolean
 Private mIndex As Long
-Private mSizable As Boolean
+Private mSizable As Boolean, mNoTaskBar As Boolean
 Public Relax As Boolean
 Private MarkSize As Long
-Public MY_BACK As New cDIBSection
+Public MY_BACK As cDIBSection
 Dim CtrlFont As New StdFont
 Dim novisible As Boolean
-Private mModalId As Double, mModalIdPrev As Double
+Private mModalid As Double, mModalIdPrev As Double
+Private mPopUpMenu As Boolean, mNoCaption As Boolean
 Public IamPopUp As Boolean
 Private mEnabled As Boolean
 Public WithEvents mDoc As Document
 Attribute mDoc.VB_VarHelpID = -1
-Dim mQuit
+Public VisibleOldState As Boolean
+Private minimPos As Long
+Private mQuit, mMenuWidth As Long
+Private MyForm3 As Form3, mMyName$
+Private IhaveLastPos As Boolean, MeTop As Long, MeLeft As Long, MeWidth As Long, MeHeight As Long
+Private mShowMaximize As Boolean, EnableStandardInfo As Boolean
+Private infopos As Long, NoEventInfo As Boolean
+Public WithEvents Pad As Form
+Attribute Pad.VB_VarHelpID = -1
+Public WithEvents glistN As gList
+Attribute glistN.VB_VarHelpID = -1
+Public UseReverse As Boolean, UseInfo As Boolean
+Private moveMe As Boolean, movemeX As Single, movemeY As Single, mTimes, mIcon As Boolean
+Private lastBlink As Long, LastBlinkmTimes As Boolean, lastBlinkOn As Boolean, Stored As Boolean
+Private DefaultName As String, ByPassColor As Boolean
+Public LastActive As String
+Friend Property Let Default(ctrlName$)
+DefaultName = ctrlName$
+End Property
+Public Property Get CaptionW() As String
+    If m_Caption = "M2000" Then
+        CaptionW = vbNullString
+    Else
+        CaptionW = m_Caption
+    End If
+End Property
+Public Property Let NoCaption(ByVal NewValue As Boolean) ' for task manager
+mNoCaption = NewValue
+If mNoCaption Then
+Static WndProc As Long, VBWndProc As Long
+   
+    m_Caption = ""
+
+    If WndProc = 0 Then
+        WndProc = GetProcAddress(GetModuleHandleW(StrPtr("user32")), "DefWindowProcW")
+        VBWndProc = GetWindowLongA(hWND, GWL_WNDPROC)
+    End If
+
+
+    If WndProc <> 0 Then
+        SetWindowLongW hWND, GWL_WNDPROC, WndProc
+        SetWindowTextW hWND, StrPtr(m_Caption)
+        SetWindowLongA hWND, GWL_WNDPROC, VBWndProc
+    Else
+        Caption = ""
+       
+    End If
+End If
+End Property
+
+Public Property Let CaptionW(ByVal NewValue As String)
+If mNoCaption Then Exit Property
+    Static WndProc As Long, VBWndProc As Long
+    If NewValue = "" Then NewValue = "M2000"
+    m_Caption = NewValue
+
+    If WndProc = 0 Then
+        WndProc = GetProcAddress(GetModuleHandleW(StrPtr("user32")), "DefWindowProcW")
+        VBWndProc = GetWindowLongA(hWND, GWL_WNDPROC)
+    End If
+
+
+    If WndProc <> 0 Then
+        SetWindowLongW hWND, GWL_WNDPROC, WndProc
+        SetWindowTextW hWND, StrPtr(m_Caption)
+        SetWindowLongA hWND, GWL_WNDPROC, VBWndProc
+    Else
+        Caption = m_Caption
+       
+    End If
+End Property
+
+Public Property Get Minimized() As Boolean
+Minimized = Not Visible And VisibleOldState
+End Property
+Public Property Get TrueVisible() As Boolean
+TrueVisible = Visible Or VisibleOldState
+End Property
+Public Property Let TrueVisible(RHS As Boolean)
+    If mQuit Then
+    
+    Else
+    VisibleOldState = RHS
+    Visible = RHS
+    End If
+End Property
 Public Sub AddGuiControl(widget As Object)
 GuiControls.Add widget
 End Sub
 Public Sub TestModal(alfa As Double)
-If mModalId = alfa Then
-mModalId = mModalIdPrev
+If mModalid = alfa Then
+mModalid = mModalIdPrev
 mModalIdPrev = 0
 Enablecontrol = True
 End If
 End Sub
-Property Get Modal() As Double
-    Modal = mModalId
+Public Sub NoTaskBar()
+On Error Resume Next
+drawminimized = False
+mNoTaskBar = True
+If Not MyForm3 Is Nothing Then
+Unload MyForm3
+Set MyForm3 = Nothing
+End If
+gList2.ShowMe
+End Sub
+Friend Property Let MyName(RHS As String)
+mMyName$ = RHS
+If IamPopUp Then Exit Property
+drawminimized = Not IsWine
+Set Icon = Form1.Icon
+If mNoTaskBar Then Exit Property
+Set MyForm3 = New Form3
+Set MyForm3.lastform = Me
+MyForm3.Timer1.enabled = False
+ttl = True
+MyForm3.CaptionW = RHS
+MyForm3.WindowState = 0
+
 End Property
-Property Let Modal(RHS As Double)
-mModalIdPrev = mModalId
-mModalId = RHS
+Friend Property Get MyName() As String
+MyName = mMyName$
 End Property
 
+
+Property Get Modal() As Double
+    Modal = mModalid
+End Property
+Property Let Modal(RHS As Double)
+mModalIdPrev = mModalid
+mModalid = RHS
+End Property
+Public Property Get PopUpMenuVal() As Boolean
+PopUpMenuVal = mPopUpMenu
+End Property
+Public Property Let PopUpMenuVal(RHS As Boolean)
+mPopUpMenu = RHS
+End Property
 Public Property Let Enablecontrol(RHS As Boolean)
-If RHS = False Then UnHook hWnd '  And Not Me Is Screen.ActiveForm Then UnHook hWnd
-If Len(MyName$) = 0 Then Exit Property
-'If rhs = Fals Then UnHook hWnd
+If RHS = False Then UnHook hWND
+If Len(mMyName$) = 0 Then Exit Property
 If mEnabled = False And RHS = True Then Me.enabled = True
 mEnabled = RHS
 
 Dim w As Object
-If Controls.Count > 0 Then
+If Controls.count > 0 Then
 For Each w In Me.Controls
 If w Is gList2 Then
 gList2.enabled = RHS
 gList2.mousepointer = 0
 ElseIf w.Visible Then
 w.enabled = RHS
-If TypeOf w Is gList Then w.TabStop = RHS
+If TypeOf w Is gList Then
+w.TabStop = w.TabStopSoft
+
+End If
 End If
 Next w
 End If
 Me.enabled = RHS
 End Property
 Public Property Get Enablecontrol() As Boolean
-If Len(MyName$) = 0 Then Enablecontrol = False: Exit Property
+If Len(mMyName$) = 0 Then Enablecontrol = False: Exit Property
 Enablecontrol = mEnabled
-
-
 End Property
 
 
@@ -196,18 +336,33 @@ End Sub
 
 Public Sub ShowmeALL()
 Dim w As Object
+If IamPopUp Then
+If EnableStandardInfo Then
+glistN.menuEnabled(2) = False
+End If
+If Not MyForm3 Is Nothing Then
+drawminimized = False
+mNoTaskBar = True
+If Not MyForm3 Is Nothing Then
+Unload MyForm3
+Set MyForm3 = Nothing
+End If
 
-If Controls.Count > 0 Then
+End If
+End If
+
+If Controls.count > 0 Then
 For Each w In Controls
 If w.enabled Then w.Visible = True
 Next w
 End If
 
 gList2.PrepareToShow
+
 End Sub
 Public Sub RefreshALL()
 Dim w As Object
-If Controls.Count > 0 Then
+If Controls.count > 0 Then
 For Each w In Controls
 If w.Visible Then
 If TypeOf w Is gList Then w.ShowMe2
@@ -218,16 +373,18 @@ Refresh
 End Sub
 
 Private Sub Form_Click()
+On Error Resume Next
 If gList2.Visible Then gList2.SetFocus
 If mIndex > -1 Then
-    Callback MyName$ + ".Click(" + CStr(index) + ")"
+    Callback mMyName$ + ".Click(" + CStr(index) + ")"
 Else
-    Callback MyName$ + ".Click()"
+    Callback mMyName$ + ".Click()"
 End If
 End Sub
 
 Private Sub Form_Activate()
 On Error Resume Next
+
 If Not Quit Then
 If myEvent Is Nothing Then
 Set EventObj = New mEvent
@@ -238,52 +395,82 @@ End If
 End If
 If PopupOn Then PopupOn = False
 If novisible Then Hide: Unload Me
-If gList2.HeadLine <> "" Then If ttl Then Form3.CaptionW = gList2.HeadLine: Form3.Refresh
+gList2.mousepointer = 1
 MarkSize = 4
 ResizeMark.Width = MarkSize * dv15
 ResizeMark.Height = MarkSize * dv15
 ResizeMark.Left = Width - MarkSize * dv15
-ResizeMark.top = Height - MarkSize * dv15
+ResizeMark.Top = Height - MarkSize * dv15
 
-ResizeMark.BackColor = GetPixel(Me.hDC, 0, 0)
+ResizeMark.backcolor = GetPixel(Me.hDC, 0, 0)
 ResizeMark.Visible = Sizable
 If Sizable Then ResizeMark.ZOrder 0
 
 If Typename(ActiveControl) = "gList" Then
-Hook hWnd, ActiveControl
-Else
-Hook hWnd, Nothing
-End If
+Hook hWND, ActiveControl
 
+Else
+Hook hWND, Nothing
+End If
+If DefaultName <> "" Then
+Dim aa As gList
+
+Set aa = Controls(DefaultName)
+aa.SetFocus
+DefaultName = ""
+End If
+If IamPopUp Then Exit Sub
+If Not moveMe Then
+If LastActive <> "" Then
+    If Controls(LastActive).enabled Then
+    If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+    End If
+End If
+End If
+If mNoTaskBar Then Exit Sub
+If ttl Then
+If MyForm3.Visible Then
+Set MyForm3.lastform = Me: MyForm3.CaptionW = gList2.HeadLine
+MyForm3.Timer1.enabled = False
+Else
+MyForm3.hideme = False
+
+If MyForm3.Timer1.Interval = 10000 Then MyForm3.Timer1.Interval = 20
+MyForm3.Timer1.enabled = True
+MyForm3.WindowState = 0
+MyForm3.Visible = True
+
+End If
+End If
 End Sub
 Private Sub Form_Deactivate0()
 If PopupOn Then
-UnHook hWnd
+UnHook hWND
 
 Exit Sub
 End If
 If IamPopUp Then
-If mModalId = ModalId And ModalId <> 0 Then
+If mModalid = Modalid And Modalid <> 0 Then
         
         If Visible Then Hide
        
-        ModalId = 0
+        Modalid = 0
             novisible = False
 End If
 Else
-    If mModalId = ModalId And ModalId <> 0 Then
+    If mModalid = Modalid And Modalid <> 0 Then
         If Visible Then
             On Error Resume Next
             Me.SetFocus
         Else
-        UnHook hWnd
-            If mModalId <> 0 Then ModalId = 0
+        UnHook hWND
+            If mModalid <> 0 Then Modalid = 0
  
             
         End If
     
     Else
-    UnHook hWnd
+    UnHook hWND
     End If
    
     End If
@@ -291,35 +478,33 @@ End Sub
 
 
 Private Sub Form_Deactivate()
-            UnHook hWnd
+            UnHook hWND
 If PopupOn Then
 
 Exit Sub
 End If
 If IamPopUp Then
-If mModalId = ModalId And ModalId <> 0 Then
+If mModalid = Modalid And Modalid <> 0 Then
 If Visible Then Hide
-ModalId = 0
+Modalid = 0
 novisible = False
 End If
 Else
-If mModalId = ModalId And ModalId <> 0 Then If Not Visible Then If mModalId <> 0 Then ModalId = 0
+If mModalid = Modalid And Modalid <> 0 Then If Not (Visible Or Me.VisibleOldState) Then If mModalid <> 0 Then Modalid = 0
 End If
 
 End Sub
 
 
 Private Sub Form_Initialize()
-'myEvent.excludeme.ResetGui
 mEnabled = True
 End Sub
-
-
 Private Sub Form_KeyPress(KeyAscii As Integer)
+On Error Resume Next
 If Me.Visible Then
 If ActiveControl Is Nothing Then
 Dim w As Object
-    If Controls.Count > 0 Then
+    If Controls.count > 0 Then
     For Each w In Controls
     If w.Visible Then
     If TypeOf w Is gList Then
@@ -335,32 +520,31 @@ Dim w As Object
     If Typename(ActiveControl) = "gList" Then ActiveControl.SetFocus
 End If
 Else
-'Debug.Print MyName$
 choosenext
 End If
 End Sub
 
 Private Sub Form_LostFocus()
 If mIndex > -1 Then
-    Callback MyName$ + ".LostFocus(" + CStr(index) + ")"
+    Callback mMyName$ + ".LostFocus(" + CStr(index) + ")"
 Else
-    Callback MyName$ + ".LostFocus()"
+    Callback mMyName$ + ".LostFocus()"
 End If
 If HOOKTEST <> 0 Then
-UnHook hWnd
+UnHook hWND
 End If
 End Sub
 
-Private Sub Form_MouseDown(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseDown(Button As Integer, Shift As Integer, x As Single, y As Single)
 If Not Relax Then
 
 
 
 Relax = True
 If mIndex > -1 Then
-    Callback MyName$ + ".MouseDown(" + CStr(index) + "," + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+    Callback mMyName$ + ".MouseDown(" + CStr(index) + "," + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 Else
-    Callback MyName$ + ".MouseDown(" + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+    Callback mMyName$ + ".MouseDown(" + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 End If
 
 
@@ -369,128 +553,426 @@ Relax = False
 End If
 End Sub
 
-Private Sub Form_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
 If Not Relax Then
 Relax = True
 
 If mIndex > -1 Then
-Callback MyName$ + ".MouseMove(" + CStr(index) + "," + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+Callback mMyName$ + ".MouseMove(" + CStr(index) + "," + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 Else
-Callback MyName$ + ".MouseMove(" + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+Callback mMyName$ + ".MouseMove(" + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 End If
 Relax = False
 End If
 
 End Sub
 
-Private Sub Form_MouseUp(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseUp(Button As Integer, Shift As Integer, x As Single, y As Single)
 If Not Relax Then
 
 Relax = True
 
 If mIndex > -1 Then
-Callback MyName$ + ".MouseUp(" + CStr(index) + "," + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+Callback mMyName$ + ".MouseUp(" + CStr(index) + "," + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 Else
-Callback MyName$ + ".MouseUp(" + CStr(Button) + "," + CStr(shift) + "," + CStr(x) + "," + CStr(y) + ")"
+Callback mMyName$ + ".MouseUp(" + CStr(Button) + "," + CStr(Shift) + "," + CStr(x) + "," + CStr(y) + ")"
 End If
 Relax = False
 End If
 End Sub
 
 Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)
-If mModalId = ModalId And ModalId <> 0 Then
+If mModalid = Modalid And Modalid <> 0 Then
     If Visible Then Hide: Quit = True
-    If mModalId <> 0 Then ModalId = 0
+    If mModalid <> 0 Then Modalid = 0
     Cancel = True
     novisible = False
-ElseIf mModalId <> 0 And Visible Then
-    mModalId = mModalIdPrev
+ElseIf mModalid <> 0 And Visible Then
+    mModalid = mModalIdPrev
     mModalIdPrev = 0
-    If mModalId > 0 Then
+    If mModalid > 0 Then
         Cancel = True
     Else
-      '    Set LastGlist = Nothing
         Quit = True
     End If
 Else
 mModalIdPrev = 0
-'Set LastGlist = Nothing
-Quit = True
+Quit = Not byPassCallback
 End If
 End Sub
 
 Private Sub Form_Resize()
+If Me.WindowState <> 0 Then WindowState = 0: Exit Sub
 gList2.MoveTwips 0, 0, Me.Width, gList2.HeightTwips
 ResizeMark.Move Width - ResizeMark.Width, Height - ResizeMark.Height
 End Sub
 
 
+Private Sub gList2_BlinkNow(Face As Boolean)
+If mTimes > 0 Then
+    mTimes = mTimes - 1
+    If mTimes = 0 Then
+    gList2.BlinkON = False: gList2.CapColor = rgb(255, 160, 0)
+    If Stored Then RestoreBlibkStatus
+    Else
+        state Face
+    End If
+Else
+    state Face
+End If
+
+gList2.ShowMe
+If Stored Then Exit Sub
+  If mIndex >= 0 Then
+   Callback mMyName$ + ".Blink(" + Str(index) + "," + Str(Face) + ")"
+   Else
+      Callback mMyName$ + ".Blink(" + Str(Face) + ")"
+      End If
+End Sub
+Public Sub state(Face As Boolean)
+    If Face Then
+        gList2.CapColor = rgb(255, 160, 0)
+    Else
+        gList2.CapColor = rgb(128, 80, 0)
+    End If
+
+End Sub
+
+Public Property Let Blink(ByVal vNewValue As Variant)
+If vNewValue = 0 Then gList2.CapColor = rgb(255, 160, 0): gList2.ShowMe
+gList2.BlinkTime = Abs(vNewValue)
+End Property
+Public Property Let BlinkTimes(ByVal vNewValue As Variant)
+mTimes = vNewValue
+End Property
+Private Sub StoreBlinkStatus()
+If Stored Then Exit Sub
+LastBlinkmTimes = mTimes
+lastBlink = gList2.BlinkTime
+lastBlinkOn = gList2.BlinkON
+Stored = True
+End Sub
+Private Sub RestoreBlibkStatus()
+On Error Resume Next
+If Not Stored Then
+ gList2.ShowMe
+Exit Sub
+End If
+mTimes = LastBlinkmTimes
+gList2.BlinkTime = lastBlink
+gList2.BlinkON = lastBlinkOn
+Stored = False
+End Sub
 Private Sub gList2_CtrlPlusF1()
     If mIndex > -1 Then
-        Callback MyName$ + ".About(" + CStr(index) + ")"
+        Callback mMyName$ + ".About(" + CStr(index) + ")"
     Else
-        Callback MyName$ + ".About()"
+        Callback mMyName$ + ".About()"
     End If
 End Sub
 
 Private Sub gList2_EnterOnly()
     If mIndex > -1 Then
-        Callback MyName$ + ".Enter(" + CStr(index) + ")"
+        Callback mMyName$ + ".Enter(" + CStr(index) + ")"
     Else
-        Callback MyName$ + ".Enter()"
+        Callback mMyName$ + ".Enter()"
     End If
 End Sub
 
 Private Sub gList2_ExposeRect(ByVal item As Long, ByVal thisrect As Long, ByVal thisHDC As Long, skip As Boolean)
 If item = -1 Then
-FillThere thisHDC, thisrect, gList2.CapColor
-FillThereMyVersion thisHDC, thisrect, &H999999
+Dim m As Long
+m = gList2.CapColor
+FillThere thisHDC, thisrect, m
+FillThereMyVersion thisHDC, thisrect, m, UseReverse
+If mSizable And mShowMaximize Then FillThereMyVersion3 thisHDC, thisrect, m, 0, UseReverse Else minimPos = 0
+If drawminimized Then FillThereMyVersion2 thisHDC, thisrect, minimPos, UseReverse
+If UseInfo Then FillThereMyVersion4 thisHDC, thisrect, infopos, UseReverse
+If mIcon Then
+drawicon thisHDC
+End If
 skip = True
 End If
 End Sub
+Private Sub OpenInfo()
+Dim gl As Long, thisLastControl As String
+
+gl = glistN.listcount
+If gl = 0 Then Exit Sub
+Pad.Width = mMenuWidth    'CLng(Width / 1.618 * dv15) \ dv15
+If gl > 8 Then gl = 8
+
+glistN.restrictLines = gl
+
+Pad.Height = (((glistN.HeadlineHeightTwips * gl) \ dv15) + 1) * dv15
+glistN.MoveTwips 0, 0, Pad.Width, Pad.Height
+glistN.LeaveonChoose = True
+glistN.ListindexPrivateUseFirstFree 0
+glistN.ShowBar = False
+glistN.PanPos = 0
+If Not UseReverse Then
+PopUpPos Pad, Width - mMenuWidth, gList2.Height / 2, gList2.Height / 2
+Else
+PopUpPos Pad, 0, gList2.Height / 2, gList2.Height / 2
+End If
+End Sub
+
 Private Sub gList2_ExposeItemMouseMove(Button As Integer, ByVal item As Long, ByVal x As Long, ByVal y As Long)
-If gList2.DoubleClickCheck(Button, item, x, y, 10 * lastfactor, 10 * lastfactor, 8 * lastfactor, -1) Then
+On Error Resume Next ' for set focus
+If Button <> 1 Then Exit Sub
+ByPassColor = True
+If UseReverse Then
+If UseInfo Then
+If gList2.SingleClickCheck(Button, item, x, y, setupxy * (1 + 2 * infopos) / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+        If NoEventInfo Then
+            OpenInfo
+        Else
+            If mIndex > -1 Then
+                Callback mMyName$ + ".Info(" + CStr(index) + "," + CStr(x) + "," + CStr(y) + ")"
+            Else
+                Callback mMyName$ + ".Info(" + CStr(x) + "," + CStr(y) + ")"
+            End If
+        End If
+   Exit Sub
+End If
+End If
+If gList2.DoubleClickCheck(Button, item, x, y, gList2.WidthPixels - setupxy / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
     ByeBye
+    Exit Sub
+End If
+If mSizable And mShowMaximize Then
+    If gList2.SingleClickCheck(Button, item, x, y, gList2.WidthPixels - setupxy * 3 / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+        If IhaveLastPos Then
+            On Error Resume Next
+            With ScrInfo(FindMonitorFromMouse)
+            If IsWine And .Left = 0 And .Top = 0 And .Width - 1 = Width And .Height - 1 = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                If LastActive <> "" Then
+                    If Controls(LastActive).enabled Then
+                    If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+                    End If
+                End If
+                Exit Sub
+            ElseIf .Width = Width And .Height = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                If LastActive <> "" Then
+                    If Controls(LastActive).enabled Then
+                    If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+                    End If
+                End If
+                Exit Sub
+            Else
+                IhaveLastPos = False
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = MeWidth
+                    Height = MeHeight
+                    Me.Move MeLeft, MeTop
+                Else
+                    Me.Move MeLeft, MeTop, MeWidth, MeHeight
+                End If
+            End If
+
+            End With
+
+        Else
+            IhaveLastPos = True
+            MeLeft = Left
+            MeTop = Top
+            MeWidth = Width
+            MeHeight = Height
+            On Error Resume Next
+            With ScrInfo(FindMonitorFromMouse)
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = .Width - 1
+                    Height = .Height - 1
+                    Move .Left, .Top
+                Else
+                Move .Left, .Top, .Width, .Height
+                End If
+            End With
+        End If
+        If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+
+        If IhaveLastPos Then
+                
+                If mIndex > -1 Then
+                    Callback mMyName$ + ".Maximized(" + CStr(index) + ")"
+                Else
+                    Callback mMyName$ + ".Maximized()"
+                End If
+                MenuSet 2
+        Else
+                If mIndex > -1 Then
+                    Callback mMyName$ + ".Restored(" + CStr(index) + ")"
+                Else
+                    Callback mMyName$ + ".Restored()"
+                End If
+               MenuSet 3
+        End If
+         Exit Sub
+    End If
+
+End If
+If Not IsWine And drawminimized Then
+    If Not MyForm3 Is Nothing Then
+        If gList2.SingleClickCheck(Button, item, x, y, gList2.WidthPixels - setupxy * (3 + 2 * minimPos) / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+            VisibleOldState = Visible
+            Visible = False
+            MinimizeON
+            Exit Sub
+        End If
+    End If
+End If
+Else
+If UseInfo Then
+If gList2.SingleClickCheck(Button, item, x, y, gList2.WidthPixels - setupxy * (1 + 2 * infopos) / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+        If NoEventInfo Then
+            OpenInfo
+        Else
+            If mIndex > -1 Then
+                Callback mMyName$ + ".Info(" + CStr(index) + "," + CStr(x) + "," + CStr(y) + ")"
+            Else
+                Callback mMyName$ + ".Info(" + CStr(x) + "," + CStr(y) + ")"
+            End If
+        End If
+    Exit Sub
+End If
+End If
+If gList2.DoubleClickCheck(Button, item, x, y, setupxy / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+    ByeBye
+    Exit Sub
+End If
+If mSizable And mShowMaximize Then
+    If gList2.SingleClickCheck(Button, item, x, y, setupxy * 3 / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+        If IhaveLastPos Then
+            On Error Resume Next
+            With ScrInfo(FindMonitorFromMouse)
+            If IsWine And .Left = 0 And .Top = 0 And .Width - 1 = Width And .Height - 1 = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                Exit Sub
+            ElseIf .Width = Width And .Height = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                Exit Sub
+            Else
+                IhaveLastPos = False
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = MeWidth
+                    Height = MeHeight
+                    Me.Move MeLeft, MeTop
+                Else
+                    Me.Move MeLeft, MeTop, MeWidth, MeHeight
+                End If
+            End If
+
+            End With
+
+        Else
+            IhaveLastPos = True
+            MeLeft = Left
+            MeTop = Top
+            MeWidth = Width
+            MeHeight = Height
+            On Error Resume Next
+            With ScrInfo(FindMonitorFromMouse)
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = .Width - 1
+                    Height = .Height - 1
+                    Move .Left, .Top
+                Else
+                Move .Left, .Top, .Width, .Height
+                End If
+            End With
+            
+        End If
+        If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+        If IhaveLastPos Then
+                If mIndex > -1 Then
+                    Callback mMyName$ + ".Maximized(" + CStr(index) + ")"
+                Else
+                    Callback mMyName$ + ".Maximized()"
+                End If
+                MenuSet 2
+        Else
+                If mIndex > -1 Then
+                    Callback mMyName$ + ".Restored(" + CStr(index) + ")"
+                Else
+                    Callback mMyName$ + ".Restrored()"
+                End If
+                MenuSet 3
+        End If
+        Exit Sub
+    End If
+       
+End If
+If Not IsWine And drawminimized Then
+    If Not MyForm3 Is Nothing Then
+        If gList2.SingleClickCheck(Button, item, x, y, setupxy * (3 + 2 * minimPos) / 2, setupxy / 3, Abs(setupxy / 2 - 2) + 1, -1) Then
+            VisibleOldState = Visible
+            Visible = False
+            MinimizeON
+            Exit Sub
+        End If
+    End If
+End If
 End If
 End Sub
 Sub ByeBye()
 Dim var(1) As Variant
 var(0) = CLng(0)
 If mIndex > -1 Then
-If Not Quit Then CallEventFromGuiNow Me, myEvent, MyName$ + ".Unload(" + CStr(mIndex) + ")", var()
+If Not Quit Then CallEventFromGuiNow Me, myEvent, mMyName$ + ".Unload(" + CStr(mIndex) + ")", var()
 Else
-If Not Quit Then CallEventFromGuiNow Me, myEvent, MyName$ + ".Unload()", var()
+If Not Quit Then CallEventFromGuiNow Me, myEvent, mMyName$ + ".Unload()", var()
 End If
 If var(0) = 0 Then
-                     If ttl Then
-                     Form3.CaptionW = ""
-                     If Form3.WindowState = 1 Then Form3.WindowState = 0
+                     If ttl And Not mNoTaskBar Then
+                     MyForm3.CaptionW = vbNullString
+                     If MyForm3.WindowState = 1 Then MyForm3.WindowState = 0
                
-                    Unload Form3
+                    Unload MyForm3
              End If
                               Unload Me
                       End If
 End Sub
-
+Friend Sub ByeBye2(ret As Long)
+Dim var(1) As Variant
+var(0) = CLng(0)
+If mIndex > -1 Then
+If Not Quit Then CallEventFromGuiNow Me, myEvent, mMyName$ + ".Unload(" + CStr(mIndex) + ")", var()
+Else
+If Not Quit Then CallEventFromGuiNow Me, myEvent, mMyName$ + ".Unload()", var()
+End If
+ret = var(0)
+End Sub
 Private Sub Form_Load()
 If onetime Then
 novisible = True
 Exit Sub
 End If
+mShowMaximize = True
+infopos = 0
 onetime = True
+minimPos = 1
 mQuit = False
-' try0001
 Set LastGlist = Nothing
 scrTwips = Screen.TwipsPerPixelX
-' clear data...
 lastfactor = 1
 setupxy = 20
+gList2.FreeMouse = True
 gList2.Font.Size = 14.25 * dv15 / 15
 gList2.enabled = True
 gList2.CapColor = rgb(255, 160, 0)
 gList2.FloatList = True
 gList2.MoveParent = True
-gList2.HeadLine = ""
+gList2.HeadLine = vbNullString
 gList2.HeadLine = "Form"
 gList2.HeadlineHeight = gList2.HeightPixels
 gList2.SoftEnterFocus
@@ -500,29 +982,44 @@ CtrlFont.name = .name
 CtrlFont.Size = .Size
 CtrlFont.bold = .bold
 End With
-gList2.FloatLimitTop = ScrY() - 600
-gList2.FloatLimitLeft = ScrX() - 450
+gList2.FloatLimitTop = VirtualScreenHeight() - 600
+gList2.FloatLimitLeft = VirtualScreenWidth() - 450
+Dim mm As Long
+mm = Forms.count
+With ScrInfo(Console)
+    If (.Left + .Width / 16 + mm * dv15 * 10) > .Width * 7 / 8 Or (.Top + .Height / 16 + mm * dv15 * 10) > .Height * 7 / 8 Then
+    Move .Left, .Top
+    Else
+    Move .Left + .Width / 16 + mm * dv15 * 10, .Top + .Height / 16 + mm * dv15 * 10
+    End If
+End With
 End Sub
 
 Private Sub Form_Unload(Cancel As Integer)
 UNhookMe
 Quit = True
 Set myEvent = Nothing
-
+If Not glistN Is Nothing Then glistN.Shutdown
+Set glistN = Nothing
+If Not Pad Is Nothing Then Unload Pad
+Set Pad = Nothing
 If prive <> 0 Then
 players(prive).used = False
-players(prive).MAXXGRAPH = 0  '' as a flag
+players(prive).MAXXGRAPH = 0
 prive = 0
+
 End If
 Dim w As Object
-If GuiControls.Count > 0 Then
+If GuiControls.count > 0 Then
 For Each w In GuiControls
     w.deconstruct
 Next w
 End If
+If ttl Then If Not MyForm3 Is Nothing Then Unload MyForm3
+If TaskMaster Is Nothing Then Exit Sub
+TaskMaster.CheckThreadsForThisObject Me
 End Sub
 Private Sub FillBack(thathDC As Long, there As RECT, bgcolor As Long)
-' create brush
 Dim my_brush As Long
 my_brush = CreateSolidBrush(bgcolor)
 FillRect thathDC, there, my_brush
@@ -534,43 +1031,181 @@ CopyFromLParamToRect a, thatRect
 
 FillBack thathDC, a, thatbgcolor
 End Sub
-
-Private Sub FillThereMyVersion(thathDC As Long, thatRect As Long, thatbgcolor As Long)
+Private Sub FillThereMyVersion(thathDC As Long, thatRect As Long, thatbgcolor As Long, Reverse As Boolean)
 Dim a As RECT, b As Long
 b = 2 * lastfactor
 If b < 2 Then b = 2
 If setupxy - b < 0 Then b = setupxy \ 4 + 1
 CopyFromLParamToRect a, thatRect
-a.Left = b
-a.Right = setupxy - b
-a.top = b
+If Reverse Then
+    a.Left = a.Right - setupxy + b
+    a.Right = a.Right - b
+Else
+    a.Left = b
+    a.Right = setupxy - b
+End If
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), 0
+CopyFromLParamToRect a, thatRect
 b = 5 * lastfactor
-a.Left = b
-a.Right = setupxy - b
-a.top = b
+If Reverse Then
+    a.Left = a.Right - setupxy + b
+    a.Right = a.Right - b
+Else
+    a.Left = b
+    a.Right = setupxy - b
+End If
+a.Top = b
 a.Bottom = setupxy - b
-FillThere thathDC, VarPtr(a), rgb(255, 160, 0)
+FillThere thathDC, VarPtr(a), thatbgcolor
 End Sub
+Private Sub FillThereMyVersion2(thathDC As Long, thatRect As Long, butPos As Long, Reverse As Boolean)
+Dim a As RECT, b As Long, c As Long
+b = 2 * lastfactor
+If b < 2 Then b = 2
+If setupxy - b < 0 Then b = setupxy \ 4 + 1
+c = setupxy * (butPos)
+CopyFromLParamToRect a, thatRect
+If Reverse Then
+    a.Left = a.Right - (c + setupxy * 2) + b
+    a.Right = a.Right - b - c - setupxy
 
-Public Property Get TITLE() As Variant
-TITLE = gList2.HeadLine
+Else
+    a.Left = b + c + setupxy
+    a.Right = setupxy - 2 * b + a.Left
+End If
+a.Bottom = setupxy - b
+b = 5 * lastfactor
+
+If 5 * lastfactor < 1 Then
+a.Top = a.Bottom - 1
+Else
+a.Top = setupxy - b
+End If
+FillThere thathDC, VarPtr(a), 0
+End Sub
+Private Sub FillThereMyVersion3(thathDC As Long, thatRect As Long, thatbgcolor As Long, butPos As Long, Reverse As Boolean)
+Dim a As RECT, b As Long, c As Long
+b = 2 * lastfactor
+If b < 2 Then b = 2
+If setupxy - b < 0 Then b = setupxy \ 4 + 1
+c = setupxy * butPos
+CopyFromLParamToRect a, thatRect
+If Reverse Then
+    a.Left = a.Right - (c + setupxy * 2) + b
+    a.Right = a.Right - b - c - setupxy
+Else
+    a.Left = b + c + setupxy
+    a.Right = setupxy - 2 * b + a.Left
+End If
+a.Top = 3 * b
+a.Bottom = setupxy - b
+FillThere thathDC, VarPtr(a), 0
+CopyFromLParamToRect a, thatRect
+b = 5 * lastfactor
+If b < 2 Then b = 2
+If Reverse Then
+    a.Left = a.Right - (c + setupxy * 2) + b
+    a.Right = a.Right - b - c - setupxy
+
+Else
+    a.Left = b + c + setupxy
+    a.Right = setupxy - 2 * b + a.Left
+End If
+
+
+a.Top = 4 * b
+a.Bottom = setupxy - b
+FillThere thathDC, VarPtr(a), thatbgcolor
+a.Bottom = a.Top - b
+b = 2 * lastfactor
+If b < 2 Then b = 2
+a.Bottom = a.Bottom - b - b / 2
+
+a.Top = 4 * b + b / 2
+FillThere thathDC, VarPtr(a), thatbgcolor
+
+
+End Sub
+Private Sub FillThereMyVersion4(thathDC As Long, thatRect As Long, butPos As Long, Reverse As Boolean)
+Dim a As RECT, b As Long, c As Long
+Dim color1 As Long
+If Not moveMe And Not ByPassColor Then
+If Screen.ActiveForm Is Me Then
+If Screen.ActiveControl Is gList2 Then
+color1 = 16777215
+End If
+End If
+End If
+b = 2 * lastfactor
+If b < 2 Then b = 2
+If setupxy - b < 0 Then b = setupxy \ 4 + 1
+CopyFromLParamToRect a, thatRect
+If Reverse Then
+c = setupxy * (butPos - 1)
+a.Left = b + c + setupxy
+a.Right = setupxy - 2 * b + a.Left
+Else
+c = setupxy * butPos
+a.Left = a.Right - (c + setupxy) + b
+ a.Right = a.Right - b - c
+End If
+a.Bottom = setupxy - b
+b = 5 * lastfactor
+
+If 5 * lastfactor < 1 Then
+a.Top = a.Bottom - 1
+Else
+a.Top = setupxy - b
+End If
+FillThere thathDC, VarPtr(a), color1
+a.Top = a.Top - b
+a.Bottom = a.Bottom - b
+FillThere thathDC, VarPtr(a), color1
+a.Top = a.Top - b
+a.Bottom = a.Bottom - b
+FillThere thathDC, VarPtr(a), color1
+
+End Sub
+Public Property Get Title() As Variant
+Title = gList2.HeadLine
 End Property
 
-Public Property Let TITLE(ByVal vNewValue As Variant)
+Public Property Let Title(ByVal vNewValue As Variant)
 ' A WORKAROUND TO CHANGE TITLE WHEN FORM IS DISABLED BY A MODAL FORM
 On Error Resume Next
 Dim oldenable As Boolean
 oldenable = gList2.enabled
 gList2.enabled = True
-gList2.HeadLine = ""
-If Trim(vNewValue) = "" Then vNewValue = " "
+gList2.HeadLine = vbNullString
+If Trim(vNewValue) = vbNullString Then vNewValue = " "
 gList2.HeadLine = vNewValue
 gList2.HeadlineHeight = gList2.HeightPixels
-'If oldenable = False Then
 gList2.ShowMe
 gList2.enabled = oldenable
+If IamPopUp Then Exit Property
+If vNewValue <> "" Then  ' was <> " "
+If mNoTaskBar Then Exit Property
+If Not ttl Then
+drawminimized = Not IsWine
+Set MyForm3 = New Form3
+Set MyForm3.lastform = Me
+MyForm3.Timer1.enabled = False
+ttl = True
+MyForm3.WindowState = 0
+End If
+MyForm3.CaptionW = gList2.HeadLine
+MyForm3.Visible = True
+MyForm3.Refresh
+If Err Then
+Err.Clear
+Sleep 10
+MyForm3.Visible = True
+
+End If
+End If
+CaptionW = gList2.HeadLine
 End Property
 Public Property Get index() As Long
 index = mIndex
@@ -581,22 +1216,19 @@ mIndex = RHS
 End Property
 Public Sub CloseNow()
 Dim w As Object
-    If mModalId = ModalId And ModalId <> 0 Then
-        ModalId = 0
+    If mModalid = Modalid And Modalid <> 0 Then
+        Modalid = 0
       If Visible Then Hide
     Else
-    mModalId = 0
+    mModalid = 0
     For Each w In GuiControls
     If Typename(w) Like "Gui*" Then
     w.deconstruct
     End If
 Next w
 Set w = Nothing
-         If ttl Then
-                     Form3.CaptionW = ""
-                     If Form3.WindowState = 1 Then Form3.WindowState = 0
-               
-                    Unload Form3
+         If ttl And Not mNoTaskBar Then
+                    Unload MyForm3
              End If
 
 Unload Me
@@ -611,14 +1243,20 @@ Public Sub Opacity(mAlpha, Optional mlColor = 0, Optional mTRMODE = 0)
 SetTrans Me, CInt(Abs(mAlpha)) Mod 256, CLng(mycolor(mlColor)), CBool(mTRMODE)
 End Sub
 Public Sub Hold()
+If Not Sizable Then
+If MY_BACK Is Nothing Then Set MY_BACK = New cDIBSection
 MY_BACK.ClearUp
-If MY_BACK.Create(Form1.Width / DXP, Form1.Height / DYP) Then
+If MY_BACK.Create(Width / DXP, Height / DYP) Then
 MY_BACK.LoadPictureBlt hDC
 If MY_BACK.bitsPerPixel <> 24 Then Conv24 MY_BACK
 End If
+End If
 End Sub
 Public Sub Release()
+If Not Sizable Then
+If MY_BACK Is Nothing Then Exit Sub
 MY_BACK.PaintPicture hDC
+End If
 End Sub
 
 
@@ -669,80 +1307,164 @@ Public Property Get CtrlFontBold()
     CtrlFontBold = CtrlFont.bold
 End Property
 
-Private Sub gList2_KeyDown(KeyCode As Integer, shift As Integer)
-'
+
+Private Sub gList2_HeadLineChange(a As String)
+If ttl And a <> "" And a <> "Form" Then
+
+End If
+
+End Sub
+
+Private Sub gList2_KeyDown(KeyCode As Integer, Shift As Integer)
+If moveMe Then
+If Shift = 0 Then
+Select Case KeyCode
+Case vbKeyLeft
+movemeX = movemeX - 10 * dv15
+Case vbKeyRight
+movemeX = movemeX + 10 * dv15
+Case vbKeyUp
+movemeY = movemeY - 10 * dv15
+Case vbKeyDown
+movemeY = movemeY + 10 * dv15
+Case Else
+    RestoreBlibkStatus
+     moveMe = False
+     On Error Resume Next
+        If LastActive <> "" Then
+            If Controls(LastActive).enabled Then
+            If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+            End If
+        End If
+    Exit Sub
+End Select
+Else
+Select Case KeyCode
+Case vbKeyLeft
+movemeX = movemeX - dv15
+Case vbKeyRight
+movemeX = movemeX + dv15
+Case vbKeyUp
+movemeY = movemeY - dv15
+Case vbKeyDown
+movemeY = movemeY + dv15
+End Select
+End If
+gList2.FloatListMe True, movemeX, movemeY
+gList2.FloatListMe False, movemeX, movemeY
+KeyCode = 0
+Exit Sub
+Else
+
 Dim VR(2)
 VR(0) = KeyCode
-VR(1) = shift
+VR(1) = Shift
 If mIndex > -1 Then
-    CallbackNow MyName$ + ".KeyDown(" + CStr(index) + ")", VR()
+    CallbackNow mMyName$ + ".KeyDown(" + CStr(index) + ")", VR()
 Else
-    CallbackNow MyName$ + ".KeyDown()", VR()
+    CallbackNow mMyName$ + ".KeyDown()", VR()
 End If
-shift = VR(1)
+Shift = VR(1)
 KeyCode = VR(0)
+If KeyCode = 40 Then
+If NoEventInfo Then
+If Not Pad.Visible Then OpenInfo
+End If
+End If
+End If
+End Sub
 
+Private Sub gList2_LostFocus()
+RestoreBlibkStatus
+ByPassColor = False
+moveMe = False
+gList2.mousepointer = 1
+End Sub
+
+
+Private Sub gList2_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
+If Button <> 0 Then RestoreBlibkStatus: moveMe = False
+End Sub
+
+Private Sub gList2_MouseUp(x As Single, y As Single)
+RestoreBlibkStatus
+moveMe = False
+If Not Pad Is Nothing Then
+If Pad.Visible Then Exit Sub
+End If
+
+        If LastActive <> "" Then
+            On Error Resume Next
+            If Me.WindowState = 1 Then Exit Sub
+            If Controls(LastActive).enabled Then
+            If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+            End If
+            If Err Then Debug.Print "error": Exit Sub
+            If MyForm3 Is Nothing Then LastActive = "": Exit Sub
+            If MyForm3.WindowState <> 1 Then LastActive = ""
+            
+        End If
 End Sub
 
 Private Sub gList2_RefreshDesktop()
 If Form1.Visible Then Form1.Refresh: If Form1.DIS.Visible Then Form1.DIS.Refresh
 End Sub
 Public Sub PopUp(vv As Variant, ByVal x As Variant, ByVal y As Variant)
-Dim var1() As Variant, retobject As Object, that As Object
+Dim var1() As Variant, retobject As Object, that As Object, hmonitor As Long
 ReDim var1(0 To 1)
 Dim var2() As String
 ReDim var2(0 To 0)
-
+hmonitor = FindFormSScreen(Me)
 x = x + Left
-y = y + top
+y = y + Top
 Set that = vv
 If Me Is that Then Exit Sub
 If that.Visible Then
 If Not that.enabled Then Exit Sub
 End If
-If x + that.Width > ScrX() Then
-If y + that.Height > ScrY() Then
-that.Move ScrX() - that.Width, ScrY() - that.Height
+If x + that.Width > ScrInfo(hmonitor).Width + ScrInfo(hmonitor).Left Then
+If y + that.Height > ScrInfo(hmonitor).Height + ScrInfo(hmonitor).Top Then
+that.Move ScrInfo(hmonitor).Width - that.Width + ScrInfo(hmonitor).Left, ScrInfo(hmonitor).Height - that.Height + ScrInfo(hmonitor).Top
 Else
-that.Move ScrX() - that.Width, y
+that.Move ScrInfo(hmonitor).Width - that.Width + ScrInfo(hmonitor).Left, y + ScrInfo(hmonitor).Top
 End If
-ElseIf y + that.Height > ScrY() Then
-that.Move x, ScrY() - Height
+ElseIf y + that.Height > ScrInfo(hmonitor).Height + ScrInfo(hmonitor).Top Then
+that.Move x, ScrInfo(hmonitor).Height - Height + ScrInfo(hmonitor).Top
 Else
 that.Move x, y
 End If
 var1(1) = 1
 Set var1(0) = Me
 that.IamPopUp = True
+
 CallByNameFixParamArray that, "Show", VbMethod, var1(), var2(), 2
 Set that = Nothing
 Set var1(0) = Nothing
-'Show
 MyDoEvents
 
 End Sub
 Public Sub PopUpPos(vv As Variant, ByVal x As Variant, ByVal y As Variant, ByVal y1 As Variant)
-Dim that As Object
+Dim that As Object, hmonitor As Long
 x = x + Left
-y = y + top + y1
+y = y + Top + y1
+hmonitor = FindFormSScreen(Me)
 Set that = vv
 If Me Is that Then Exit Sub
 If that.Visible Then
 If Not that.enabled Then Exit Sub
 End If
-If x + that.Width > ScrX() Then
-If y + that.Height > ScrY() Then
-that.Move ScrX() - that.Width, y - that.Height - y1
+If x + that.Width > ScrInfo(hmonitor).Width + ScrInfo(hmonitor).Left Then
+If y + that.Height > ScrInfo(hmonitor).Height + ScrInfo(hmonitor).Top Then
+that.Move ScrInfo(hmonitor).Width + ScrInfo(hmonitor).Left - that.Width, y - that.Height - y1 + ScrInfo(hmonitor).Top
 Else
-that.Move ScrX() - that.Width, y
+that.Move ScrInfo(hmonitor).Width + ScrInfo(hmonitor).Left - that.Width, y + ScrInfo(hmonitor).Top
 End If
-ElseIf y + that.Height > ScrY() Then
-that.Move x, y - that.Height - y1
+ElseIf y + that.Height > ScrInfo(hmonitor).Height + ScrInfo(hmonitor).Top Then
+that.Move x, y - that.Height - y1 + ScrInfo(hmonitor).Top
 Else
 that.Move x, y
 End If
 that.ShowmeALL
-'If ModalId <> 0 Then
 PopupOn = True
 
 that.Show , Me
@@ -752,16 +1474,39 @@ Public Sub hookme(this As gList)
 Set LastGlist = this
 End Sub
 
-Private Sub mDoc_MayQuit(yes As Variant)
-If mQuit Or Not Visible Then yes = True
-MyDoEvents1 Me
-'ProcTask2 basestack1
-End Sub
 
-Private Sub ResizeMark_MouseUp(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub glistN_CheckLostFocus()
+On Error Resume Next
+If Not moveMe Then
+                If LastActive <> "" Then
+
+                    If Controls(LastActive).enabled Then
+                    If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+                    End If
+                End If
+                Else
+               If IsWine Then If glistN.Visible Then gList2.SetFocus
+                End If
+End Sub
+Private Sub glistN_KeyDown(KeyCode As Integer, Shift As Integer)
+If KeyCode = vbKeyLeft Or KeyCode = vbKeyRight Then
+
+KeyCode = 0
+
+Pad.Visible = False
+ElseIf KeyCode = 9 Then
+KeyCode = 0
+Pad.Visible = False
+End If
+End Sub
+Private Sub mDoc_MayQuit(Yes As Variant)
+If mQuit Or Not Visible Then Yes = True
+MyDoEvents1 Me
+End Sub
+Private Sub ResizeMark_MouseUp(Button As Integer, Shift As Integer, x As Single, y As Single)
 If Sizable And Not dr Then
     x = x + ResizeMark.Left
-    y = y + ResizeMark.top
+    y = y + ResizeMark.Top
     If (y > Height - 150 And y < Height) And (x > Width - 150 And x < Width) Then
     
     dr = Button = 1
@@ -775,25 +1520,26 @@ If Sizable And Not dr Then
 End If
 End Sub
 
-Private Sub ResizeMark_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub ResizeMark_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
 Dim addy As Single, addX As Single
 If Not Relax Then
     x = x + ResizeMark.Left
-    y = y + ResizeMark.top
+    y = y + ResizeMark.Top
     If Button = 0 Then If dr Then Me.mousepointer = 0: dr = False: Relax = False: Exit Sub
     Relax = True
     If dr Then
          If y < (Height - 150) Or y >= Height Then addy = (y - ly) Else addy = dv15 * 5
          If x < (Width - 150) Or x >= Width Then addX = (x - Lx) Else addX = dv15 * 5
-         If Width + addX >= 1800 And Width + addX < ScrX() Then
-             If Height + addy >= 1800 And Height + addy < ScrY() Then
+         If Width + addX >= 1800 And Width + addX < VirtualScreenWidth() Then
+             If Height + addy >= 1800 And Height + addy < VirtualScreenHeight() Then
                 Lx = x
                 ly = y
-                Move Left, top, Width + addX, Height + addy
+                Move Left, Top, Width + addX, Height + addy
+                IhaveLastPos = False
                 If mIndex > -1 Then
-                    Callback MyName$ + ".Resize(" + CStr(index) + ")"
+                    Callback mMyName$ + ".Resize(" + CStr(index) + ")"
                 Else
-                    Callback MyName$ + ".Resize()"
+                    Callback mMyName$ + ".Resize()"
                 End If
             End If
         End If
@@ -825,8 +1571,10 @@ Public Property Let Sizable(ByVal vNewValue As Variant)
 mSizable = vNewValue
 ResizeMark.enabled = vNewValue
 If ResizeMark.enabled Then
+minimPos = 1
 ResizeMark.Visible = Me.Visible
 Else
+minimPos = 0
 ResizeMark.Visible = False
 End If
 End Property
@@ -852,11 +1600,11 @@ End Property
 
 Sub GetFocus()
 On Error Resume Next
-Me.SetFocus
+If Me.Visible Then Me.SetFocus
 End Sub
 Public Sub UNhookMe()
 Set LastGlist = Nothing
-UnHook hWnd
+UnHook hWND
 End Sub
 
 Public Property Get Quit() As Variant
@@ -866,3 +1614,561 @@ End Property
 Public Property Let Quit(ByVal vNewValue As Variant)
 mQuit = vNewValue
 End Property
+
+Public Property Get ShowMaximize() As Variant
+ShowMaximize = mShowMaximize
+End Property
+
+Public Property Let ShowMaximize(ByVal vNewValue As Variant)
+mShowMaximize = vNewValue
+If gList2.Visible Then gList2.ShowMe
+End Property
+Friend Sub MinimizeOff()
+           If MyForm3 Is Nothing Then Exit Sub
+           If Not MyForm3.WindowState = 0 Then
+            MyForm3.skiptimer = True
+            MyForm3.WindowState = 0
+           End If
+End Sub
+Friend Sub MinimizeON()
+           If MyForm3 Is Nothing Then Exit Sub
+           If Not MyForm3.WindowState = 1 Then
+           MyForm3.skiptimer = True
+           MyForm3.WindowState = 1
+           End If
+End Sub
+Private Sub glistN_PanLeftRight(Direction As Boolean)
+Dim item As Long
+On Error Resume Next
+If Direction = True Then
+item = glistN.ListIndex
+
+If glistN.ListSep(item) Then Exit Sub
+If glistN.ListRadio(item) Then
+    glistN.ListSelected(item) = True
+    
+End If
+
+    If LastActive <> "" Then
+        If EnableStandardInfo And item = 5 Then
+        
+            If gList2.Visible Then gList2.SetFocus
+        Else
+            If Controls(LastActive).enabled Then
+            If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+            End If
+            LastActive = ""
+            End If
+        Else
+    If gList2.Visible Then gList2.SetFocus
+        End If
+If EnableStandardInfo Then
+Select Case item
+Case 1
+' standard event
+Case 2
+    Minimize
+Case 3
+    If Maximize(True) Then
+            If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+    MenuSet 2
+    End If
+Case 4
+    If Maximize(False) Then
+            If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+    MenuSet 3
+    End If
+Case 5
+    MoveByKeyboard
+    Blink = 50
+    BlinkTimes = 10
+    Exit Sub
+Case glistN.listcount - 1
+    ByeBye
+    Exit Sub
+End Select
+End If
+   If mIndex >= 0 Then
+      Callback mMyName$ + ".InfoClick(" + Str(mIndex) + "," + Str(item) + ")"
+   Else
+      Callback mMyName$ + ".InfoClick(" + Str(item) + ")"
+      End If
+      
+  
+End If
+End Sub
+
+Private Sub glistN_Selected2(item As Long)
+On Error Resume Next
+
+If glistN.ListSep(item) Then Exit Sub
+If item >= 0 Then
+
+    If glistN.ListSep(item) Then Exit Sub
+        If glistN.ListRadio(item) Then
+            glistN.ListSelected(item) = True
+        End If
+    Pad.UNhookMe
+    
+    If LastActive <> "" Then
+        If EnableStandardInfo And item = 5 Then
+            If gList2.Visible Then gList2.SetFocus
+        Else
+            If Controls(LastActive).enabled Then
+            If Controls(LastActive).Visible Then Controls(LastActive).SetFocus
+            End If
+            LastActive = ""
+            End If
+        Else
+    If gList2.Visible Then gList2.SetFocus
+        End If
+    If EnableStandardInfo Then
+Select Case item
+Case 1
+' standard event
+Case 2
+    Minimize
+Case 3
+    If Maximize(True) Then
+            If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+    MenuSet 2
+    End If
+Case 4
+    If Maximize(False) Then
+            If mIndex > -1 Then
+           Callback mMyName$ + ".Resize(" + CStr(index) + ")"
+        Else
+           Callback mMyName$ + ".Resize()"
+        End If
+    MenuSet 3
+    End If
+Case 5
+    MoveByKeyboard
+    Blink = 50
+    BlinkTimes = 10
+    Exit Sub
+Case glistN.listcount - 1
+    ByeBye
+    Exit Sub
+End Select
+End If
+   If mIndex >= 0 Then
+      Callback mMyName$ + ".InfoClick(" + Str(mIndex) + "," + Str(item) + ")"
+   Else
+      Callback mMyName$ + ".InfoClick(" + Str(item) + ")"
+      End If
+    
+Else
+    Pad.Visible = False
+End If
+End Sub
+
+
+Public Sub additem(a$)
+If Not NoEventInfo Then Exit Sub
+glistN.additemFast a$
+End Sub
+
+Public Sub additemFast(a$)
+If Not NoEventInfo Then Exit Sub
+glistN.additemFast a$
+End Sub
+Public Property Get MenuWidth() As Long
+MenuWidth = mMenuWidth
+End Property
+
+Public Property Let MenuWidth(ByVal RHS As Long)
+ mMenuWidth = Abs(RHS)
+ If mMenuWidth < 3000 Then mMenuWidth = 3000
+End Property
+Property Let menuEnabled(item As Long, ByVal RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.menuEnabled(item) = RHS
+End Property
+Public Property Let Mark(item)
+If Not NoEventInfo Then Exit Property
+glistN.dcolor = mycolor(item)
+End Property
+Property Get menuEnabled(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+menuEnabled = Not glistN.ListSep(item)
+End Property
+Public Sub Remove(item)
+If Not NoEventInfo Then Exit Sub
+On Error Resume Next
+If item < 0 Then Exit Sub
+glistN.Removeitem item
+End Sub
+Public Sub Insert(item, a$)
+If Not NoEventInfo Then Exit Sub
+On Error Resume Next
+glistN.ListindexPrivateUse = item
+If glistN.ListIndex > -1 Then
+glistN.additemAtListIndex a$
+End If
+End Sub
+Public Sub MenuItemAtListIndex(Optional enabledthis As Boolean = True, Optional checked As Boolean = False, Optional radiobutton As Boolean = False, Optional firstate As Boolean = False, Optional IdD)
+If Not NoEventInfo Then Exit Sub
+Dim item
+item = glistN.ListIndex
+If item < 0 Then Exit Sub
+If IsMissing(IdD) Then
+glistN.MenuItem item, checked, radiobutton, firstate
+
+Else
+glistN.MenuItem item, checked, radiobutton, firstate, CStr(IdD)
+End If
+glistN.menuEnabled(CLng(item - 1)) = enabledthis
+End Sub
+Public Sub MenuItem(a$, Optional enabledthis As Boolean = True, Optional checked As Boolean = False, Optional radiobutton As Boolean = False, Optional firstate As Boolean = False, Optional IdD)
+If Not NoEventInfo Then Exit Sub
+Dim item
+If Not a$ = vbNullString Then
+glistN.additemFast a$
+End If
+item = glistN.listcount
+If a$ = vbNullString Then
+glistN.AddSep
+Else
+If IsMissing(IdD) Then
+glistN.MenuItem item, checked, radiobutton, firstate
+
+Else
+glistN.MenuItem item, checked, radiobutton, firstate, CStr(IdD)
+End If
+glistN.menuEnabled(CLng(item - 1)) = enabledthis
+End If
+End Sub
+Public Sub MenuRadio(a$, Optional enabledthis As Boolean = True, Optional firstate As Boolean = False, Optional IdD)
+If Not NoEventInfo Then Exit Sub
+Dim item, checked As Boolean
+checked = False
+
+If Not a$ = vbNullString Then
+glistN.additemFast a$
+End If
+item = glistN.listcount
+If a$ = vbNullString Then
+glistN.AddSep
+Else
+If IsMissing(IdD) Then
+glistN.MenuItem item, True, True, False
+
+Else
+glistN.MenuItem item, True, True, False, CStr(IdD)
+End If
+If firstate Then glistN.ListSelectedNoRadioCare(CLng(item - 1)) = True
+glistN.menuEnabled(CLng(item - 1)) = enabledthis
+End If
+End Sub
+
+Property Let ListRadioPrivate(item As Long, RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.ListSelectedNoRadioCare(item) = RHS
+End Property
+Property Get ListSelected(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+ListSelected = glistN.ListSelected(item)
+End Property
+Property Let ListSelected(item As Long, RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.ListSelected(item) = RHS
+End Property
+Property Get ListChecked(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+ListChecked = glistN.ListChecked(item)
+End Property
+Property Let ListChecked(item As Long, RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.ListChecked(item) = RHS
+End Property
+Property Get ListMenu(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+ListMenu = glistN.ListMenu(item)
+End Property
+
+Property Get ListRadio(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+ListRadio = glistN.ListRadio(item)
+End Property
+Property Let ListRadio(item As Long, RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.ListRadio(item) = RHS
+End Property
+Property Get ListSep(item As Long) As Boolean
+If Not NoEventInfo Then Exit Property
+ListSep = glistN.ListSep(item)
+End Property
+Property Let ListSep(item As Long, RHS As Boolean)
+If Not NoEventInfo Then Exit Property
+glistN.ListSep(item) = RHS
+End Property
+
+Sub MakeInfo(ByVal RHS As Long)
+
+
+
+ NoEventInfo = True
+ Dim PadGui As New GuiM2000
+ Set Pad = PadGui
+ On Error Resume Next
+ Set glistN = Pad.Controls(1)
+If EnableStandardInfo Then
+    glistN.Clear
+   
+    EnableStandardInfo = False
+End If
+ UseInfo = True
+With glistN
+    .addpixels = 4
+    .FontSize = Me.CtrlFontSize
+    .FontBold = True
+    .backcolor = rgb(255, 255, 255)
+    .ForeColor = 0
+    .enabled = True
+    .NoPanLeft = True
+    .NoPanRight = False
+    .SingleLineSlide = True
+    .LeaveonChoose = True
+    .LeftMarginPixels = 8
+    .VerticalCenterText = True
+    .ShowBar = False
+    .StickBar = False ' True ' try with false - or hold shift to engage false
+    .NoFreeMoveUpDown = True
+     .CapColor = gList2.CapColor
+    .dcolor = rgb(200, 200, 200)
+    .BorderStyle = 1
+ End With
+ If Err.Number > 0 Then
+ Set glistN = Pad.Controls(1)
+ End If
+ If RHS < 0 Then
+    RHS = -RHS
+    If RHS > 80 Then RHS = 80
+    mMenuWidth = CLng(glistN.UserControlTextWidth("W") * RHS * 1.3)
+ Else
+    mMenuWidth = Abs(RHS)
+    If mMenuWidth < 3000 Then mMenuWidth = 3000
+ End If
+ PadGui.PopUpMenuVal = True
+ With Pad
+    .gList2.HeadLine = vbNullString
+    .gList2.HeadLine = vbNullString
+    .gList2.HeadlineHeight = .gList2.HeightPixels
+End With
+glistN.Dynamic
+End Sub
+Public Sub Minimize()
+If IsWine Then Exit Sub
+If Minimized Then Exit Sub
+If MyForm3 Is Nothing Then Exit Sub
+On Error Resume Next
+If gList2.Visible Then gList2.SetFocus
+MyForm3.Timer1.enabled = False
+MyForm3.Timer1.Interval = 20
+'MyForm3.Timer1.enabled = True
+MyForm3.WindowState = 1
+End Sub
+Public Function Maximize(what As Boolean) As Boolean
+On Error Resume Next
+If Not mSizable Then Exit Function
+If IhaveLastPos And Not what Then
+           
+            With ScrInfo(FindMonitorFromMouse)
+            If IsWine And .Left = 0 And .Top = 0 And .Width - 1 = Width And .Height - 1 = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                Exit Function
+            ElseIf .Width = Width And .Height = Height And (.Left <> Left Or .Top <> Top) Then
+                Me.Move .Left, .Top
+                Exit Function
+            Else
+                IhaveLastPos = False
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = MeWidth
+                    Height = MeHeight
+                    Me.Move MeLeft, MeTop
+                Else
+                    Me.Move MeLeft, MeTop, MeWidth, MeHeight
+                End If
+            End If
+
+            End With
+    Maximize = True
+ElseIf what And Not IhaveLastPos Then
+    IhaveLastPos = True
+    MeLeft = Left
+    MeTop = Top
+    MeWidth = Width
+    MeHeight = Height
+    On Error Resume Next
+    With ScrInfo(FindMonitorFromMouse)
+                If IsWine And .Left = 0 And .Top = 0 Then
+                    Width = .Width - 1
+                    Height = .Height - 1
+                    Move .Left, .Top
+                Else
+                Move .Left, .Top, .Width, .Height
+                End If
+    End With
+    Maximize = True
+End If
+End Function
+Public Sub MoveByKeyboard()
+If gList2.Visible Then
+StoreBlinkStatus
+movemeX = MOUSEX()
+movemeY = MOUSEY
+gList2.FloatListMe False, movemeX, movemeY
+moveMe = True
+End If
+End Sub
+
+Public Property Get UseIcon() As Variant
+    UseIcon = mIcon
+End Property
+
+Public Property Let UseIcon(ByVal vNewValue As Variant)
+    If mIcon = CBool(vNewValue) Then Exit Property
+    mIcon = CBool(vNewValue)
+    If mIcon Then infopos = 1 Else infopos = 0
+    gList2.ShowMe
+End Property
+Private Sub drawicon(HDC1 As Long)
+Dim picthis As StdPicture, my_brush As Long, msize As Long
+
+msize = setupxy
+If Me.Icon Is Nothing Then
+    Set picthis = Form1.Icon
+Else
+    Set picthis = Icon
+End If
+my_brush = CreateSolidBrush(gList2.CapColor)
+If IsWine Then
+If UseReverse Then
+gList2.PaintPicture1 picthis, 0, 0, msize, msize
+gList2.PaintPicture1 picthis, 0, 0, msize, msize
+Else
+gList2.PaintPicture1 picthis, gList2.WidthPixels - msize, 0, msize, msize
+gList2.PaintPicture1 picthis, gList2.WidthPixels - msize, 0, msize, msize
+
+End If
+Else
+If Not UseReverse Then
+DrawIconEx HDC1, gList2.WidthPixels - msize, 0, picthis, msize, msize, 0, my_brush, 1
+DrawIconEx HDC1, gList2.WidthPixels - msize, 0, picthis, msize, msize, 0, 0, &H3
+
+Else
+DrawIconEx HDC1, 0, 0, picthis, msize, msize, 0, my_brush, 1
+DrawIconEx HDC1, 0, 0, picthis, msize, msize, 0, 0, &H3
+End If
+End If
+DeleteObject my_brush
+End Sub
+Public Function GetPicture(ByVal s$, Optional Size, Optional ColorDepth, Optional x, Optional y) As StdPicture
+Dim where$
+On Error Resume Next
+where$ = CFname(s$)
+If where$ = "" Then
+    Set GetPicture = Form1.Icon
+Else
+where$ = GetDosPath(where$)
+If where$ = "" Then Set GetPicture = LoadPicture(""): Exit Function
+If IsMissing(Size) And IsMissing(ColorDepth) And IsMissing(x) And IsMissing(y) Then
+Set GetPicture = LoadPicture(where$)
+ElseIf IsMissing(ColorDepth) And IsMissing(x) And IsMissing(y) Then
+Set GetPicture = LoadPicture(where$, Size)
+ElseIf IsMissing(x) And IsMissing(y) Then
+Set GetPicture = LoadPicture(where$, Size, ColorDepth)
+ElseIf IsMissing(y) Then
+Set GetPicture = LoadPicture(where$, Size, ColorDepth, x)
+Else
+Set GetPicture = LoadPicture(where$, Size, ColorDepth, x, y)
+End If
+End If
+End Function
+Public Sub ReloadIcon(ByVal s$, Optional Size, Optional ColorDepth, Optional x, Optional y)
+Dim where$
+On Error Resume Next
+where$ = CFname(s$)
+If where$ = "" Then
+    Set Icon = Form1.Icon
+Else
+where$ = GetDosPath(where$)
+    If where$ = "" Then Exit Sub
+If IsMissing(Size) And IsMissing(ColorDepth) And IsMissing(x) And IsMissing(y) Then
+Set Icon = LoadPicture(where$)
+ElseIf IsMissing(ColorDepth) And IsMissing(x) And IsMissing(y) Then
+Set Icon = LoadPicture(where$, Size)
+ElseIf IsMissing(x) And IsMissing(y) Then
+Set Icon = LoadPicture(where$, Size, ColorDepth)
+ElseIf IsMissing(y) Then
+Set Icon = LoadPicture(where$, Size, ColorDepth, x)
+Else
+Set Icon = LoadPicture(where$, Size, ColorDepth, x, y)
+End If
+End If
+If MyForm3 Is Nothing Then Exit Sub
+Set MyForm3.Icon = Icon
+End Sub
+Public Sub MakeStandardInfo(RHS)
+MakeInfo -7
+Dim item
+If RHS > 0 Then
+    MenuItem "About", True
+    MenuItem ""
+    MenuItem "Minimize", Not IsWine And Not IamPopUp
+    MenuItem "Maximize", mSizable
+    MenuItem "Restore", False
+    MenuItem "Move", True
+    MenuItem ""
+    MenuItem "Close", True
+Else
+    MenuItem "Σχετικά", True
+    MenuItem ""
+    MenuItem "Απόκρυψη", Not IsWine And Not IamPopUp
+    MenuItem "Επέκταση", mSizable
+    MenuItem "Επαναφορά", False
+    MenuItem "Μετακίνηση", True
+    MenuItem ""
+    MenuItem "Κλείσιμο", True
+End If
+EnableStandardInfo = True
+End Sub
+Private Sub MenuSet(RHS)
+If Not EnableStandardInfo Then Exit Sub
+Select Case RHS
+Case 2
+ glistN.menuEnabled(3) = False: glistN.menuEnabled(4) = True
+Case 3
+ glistN.menuEnabled(3) = True: glistN.menuEnabled(4) = False
+ End Select
+End Sub
+Sub InsertMenuItem(a$, Optional enabledthis As Boolean = True, Optional checked As Boolean = False, Optional radiobutton As Boolean = False, Optional firstate As Boolean = False, Optional IdD)
+If Not NoEventInfo Then Exit Sub
+Dim item
+glistN.additemAtListIndex a$
+item = glistN.ListIndex
+If a$ = vbNullString Then
+glistN.ListSep(item - 1) = True
+Else
+If IsMissing(IdD) Then
+glistN.MenuItem item, checked, radiobutton, firstate
+
+Else
+glistN.MenuItem item, checked, radiobutton, firstate, CStr(IdD)
+End If
+glistN.menuEnabled(CLng(item - 1)) = enabledthis
+End If
+End Sub

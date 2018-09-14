@@ -11,6 +11,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
+Option Explicit
 'class for call back
 Private objref As basetask
 Private mineHere$
@@ -26,14 +27,14 @@ Friend Sub NoPublic(bstack As basetask, where$)
         mineHere$ = where$
 End Sub
 Property Let ShowGui(RHS As Boolean)
-If Forms.Count = 0 Then Exit Property
+If Forms.count = 0 Then Exit Property
 If RHS Then
 Form1.Visible = True
 Form1.WindowState = 0
-If Form1.top >= ScrY() Then Form1.Move 0, 0
+If Form1.Top >= VirtualScreenHeight Then Form1.Move ScrInfo(Console).Left, ScrInfo(Console).Top
 Else
 If Form1.WindowState = 0 Then
-If Not (QRY Or GFQRY Or Forms.Count > 5) Then Form1.Visible = False
+If Not (QRY Or GFQRY Or Forms.count > 5) Then Form1.Visible = False
 End If
 End If
 End Property
@@ -41,7 +42,7 @@ Public Sub EventRef(RHS As Object, Optional name As String)
 Set mObjRef = RHS
 mName$ = name$
 End Sub
-Sub MethodType(ByVal mName$, mType$)
+Public Sub MethodType(ByVal mName$, mType$)
 mName$ = myUcase(mName$)
 reghash.AddKey mName$, mType$
 End Sub
@@ -95,7 +96,7 @@ End Select
 Next i
 PushStage objref, 0
 Set mS = Nothing
-here$ = ""
+here$ = vbNullString
 If subHash.ExistKey(myUcase(modulename$, True)) Then
     probe = interpret(objref, modulename$)
 Else
@@ -129,10 +130,9 @@ Set oldsoros = Nothing
 here$ = ohere$
 End Sub
 Public Sub CallModule(modulename$, ParamArray a())
-Static Once As Boolean, where As Long, what
+Static once As Boolean, where As Long, what, full$
 If Status <> 0 Then Exit Sub
 If Not GetSubFullName2(myUcase(modulename$, True), full$, where) Then
-'MyEr "Not Found", "Δεν Βρέθηκε"
     what = False
     
     If mObjRef Is Nothing Then
@@ -157,9 +157,9 @@ If Not GetSubFullName2(myUcase(modulename$, True), full$, where) Then
 Exit Sub
 End If
 
-If Once Then Exit Sub
+If once Then Exit Sub
 Dim ohere$
-Once = True
+once = True
 ohere$ = here$
 here$ = full$
 
@@ -169,7 +169,7 @@ Dim manydim As Long, maxitems As Long, probe As Long, v() As Variant, probelow A
 Dim IhaveSignature As Boolean, sign$, sign2$, dummy$, look As Long
 If reghash.Find(myUcase(modulename$, True)) Then
 sign$ = reghash.Value
-sign2$ = sigh$
+sign2$ = sign$
 IhaveSignature = True
 End If
 ' no byrefernece yet
@@ -209,7 +209,7 @@ If IhaveSignature Then
 look = IsLabelOnly(sign$, dummy$)
 If look = 2 Then ' byref
 look = IsLabelOnly(sign$, dummy$)
-look = GlobalVar("b" + CStr(var2used) + "." + dummy$, True)
+look = globalvar("b" + CStr(var2used) + "." + dummy$, True) ' perhaps this is a fault, why is true??
 ElseIf look > 4 Then
 FastSymbol sign, ")", True
 mS.DataObj ar
@@ -225,6 +225,8 @@ Erase v()
 Else
 mS.DataValLong 0
 End If
+
+
 Case vbEmpty
 mS.DataValLong 0
 Case vbVariant, vbString
@@ -272,17 +274,17 @@ PopStage objref
 Set objref.Sorosref = oldsoros
 Set oldsoros = Nothing
 here$ = ohere$
-Once = False
+once = False
 End Sub
 
 Public Sub ExecuteStatement(ByVal code$)
-Dim what$, pos As Long, func As Boolean, param$
+Dim what$, pos As Long, func As Boolean, param$, drop$
 If Status <> 0 Then Exit Sub
 If IsLabelOnly(code$, what$) > 4 Then
     func = True
-ElseIf what$ = "" Then
+ElseIf what$ = vbNullString Then
     Exit Sub
-ElseIf LTrim$(code$) = "" Then
+ElseIf LTrim$(code$) = vbNullString Then
 ' one call
 Call Run(what$)
 Exit Sub
@@ -290,7 +292,7 @@ End If
 Do
  pos = 1
   drop$ = aheadstatus(code$, True, pos)
-  If drop$ = "" And pos > Len(code$) Then Exit Sub
+  If drop$ = vbNullString And pos > Len(code$) Then Exit Sub
   If param$ <> "" Then
   param$ = param$ + ", " + Left$(code$, pos - 1)
   Else
@@ -308,7 +310,7 @@ Public Function Eval(code$) As Variant
 Dim pos As Long, p As Double, s As String, drop$
  pos = 1
   drop$ = aheadstatus(code$, True, pos)
-  If drop$ = "" And pos > Len(code$) Then Exit Function
+  If drop$ = vbNullString And pos > Len(code$) Then Exit Function
   If InStr(drop$, "N") Then
   If IsExp(objref, Left$(code$, pos), p) Then
   If Not objref.lastobj Is Nothing Then
@@ -348,11 +350,11 @@ MOUT = False
 ResetBreak
 Run = True
         LastErNum = 0: LastErNum1 = 0
-        LastErName = ""
-        LastErNameGR = ""
+        LastErName = vbNullString
+        LastErNameGR = vbNullString
 
 If Execute(objref, code$, False) <> 1 Then
-Run = fasle
+Run = False
 
 If Not App.StartMode = vbSModeStandalone Then
                  MOUT = True
@@ -436,8 +438,8 @@ Public Sub Reset()
 
     NERR = False
         LastErNum = 0: LastErNum1 = 0
-        LastErName = ""
-        LastErNameGR = ""
+        LastErName = vbNullString
+        LastErNameGR = vbNullString
  
 
         
@@ -446,12 +448,28 @@ End Sub
 Private Sub Class_Initialize()
         Set objref = New basetask
         Set objref.Owner = Form1.DIS
-        mineHere$ = "" 'HERE$
+        mineHere$ = vbNullString 'HERE$
 End Sub
-
+Public Function SpellUnicode(a$)
+' use spellunicode to get numbers
+' and make a ListenUnicode...with numbers for input text
+Dim b$, i As Long
+For i = 1 To Len(a$) - 1
+b$ = b$ & CStr(AscW(Mid$(a$, i, 1))) & ","
+Next i
+SpellUnicode = b$ & CStr(AscW(Right$(a$, 1)))
+SpellUnicode = b$ & CStr(AscW(Right$(a$, 1)))
+End Function
+Public Function ListenUnicode(ParamArray aa() As Variant) As String
+Dim all$, i As Long
+For i = 0 To UBound(aa)
+    all$ = all$ & ChrW(aa(i))
+Next i
+ListenUnicode = all$
+End Function
 Private Sub Class_Terminate()
 Set mObjRef = Nothing
-mName$ = name$
+mName$ = vbNullString
 Set objref.Owner = Nothing
 Set objref.Sorosref = Nothing
 Set objref = Nothing

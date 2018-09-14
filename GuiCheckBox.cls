@@ -11,6 +11,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
+Option Explicit
 ' From Tools make changed property as default
 Public WithEvents glistN As gList
 Attribute glistN.VB_VarHelpID = -1
@@ -18,7 +19,7 @@ Dim check1focus As Boolean
 Dim mCaptext As String
 Dim mValue As Boolean
 '' FOR EVERY GuiSomething
-Public CtrlName As String
+Public ctrlName As String
 Private mesCtrlName As String
 Dim mIndex As Long, mStayOpen As Boolean
 Dim Callback As GuiM2000
@@ -44,11 +45,11 @@ Public Sub Construct(there As Form, name$)
  mIndex = -1
  Set Callback = there
  On Error Resume Next
- CtrlName = GetTag$
- Set glistN = there.Controls.Add("m2000.glist", CtrlName)
+ ctrlName = GetTag$
+ Set glistN = there.Controls.Add("m2000.glist", ctrlName)
  there.AddGuiControl Me
  glistN.Dynamic
- there.Controls(CtrlName).TabStop = True
+ there.Controls(ctrlName).TabStop = True
  mesCtrlName = name$
 End Sub
 
@@ -59,14 +60,14 @@ Public Sub ConstructArray(there As Form, name$, i As Long)
   'Set glistN = there.Controls.Add("m2000.glist", name$ + "_" + LTrim(Str$(i)))
 'CtrlName = name$ + "_" + LTrim(Str$(i))
  ' If Err.Number > 0 Then
- CtrlName = GetTag$
- Set glistN = there.Controls.Add("m2000.glist", CtrlName)
+ ctrlName = GetTag$
+ Set glistN = there.Controls.Add("m2000.glist", ctrlName)
  
  'End If
  mIndex = i
  there.AddGuiControl Me
  glistN.Dynamic
- there.Controls(CtrlName).TabStop = True
+ there.Controls(ctrlName).TabStop = True
  mesCtrlName = name$
 End Sub
 Public Property Get enabled() As Long
@@ -221,30 +222,39 @@ Private Sub glistN_Selected2(item As Long)
       Callback.Callback mesCtrlName + ".Click(" + Str(checked) + ")"
       End If
 End Sub
-Public Property Get top() As Variant
-top = Callback.Controls(CtrlName).top
+Public Property Get Top() As Variant
+Top = Callback.Controls(ctrlName).Top
 End Property
-Public Property Let top(ByVal RHS As Variant)
-Callback.Controls(CtrlName).top = RHS
+Public Property Let Top(ByVal RHS As Variant)
+Callback.Controls(ctrlName).Top = RHS
 End Property
 Public Property Get Left() As Variant
-Left = Callback.Controls(CtrlName).Left
+Left = Callback.Controls(ctrlName).Left
 End Property
 
 Public Property Let Left(ByVal RHS As Variant)
-Callback.Controls(CtrlName).Left = RHS
+Callback.Controls(ctrlName).Left = RHS
 End Property
 Public Property Let ShowAlways(ByVal vNewValue As Variant)
 mStayOpen = CBool(vNewValue)
 If mStayOpen Then
 glistN.ForeColor = rgb(0, 0, 0)
-glistN.BackColor = rgb(255, 255, 255)
+glistN.backcolor = rgb(255, 255, 255)
 End If
 End Property
 Sub GetFocus()
 On Error Resume Next
-Callback.Controls(CtrlName).SetFocus
+Callback.Controls(ctrlName).SetFocus
 End Sub
 Sub Show()
 glistN.ShowPan
 End Sub
+Public Property Let Default(RHS)
+On Error Resume Next
+If CBool(RHS) Then Callback.Default = ctrlName
+End Property
+Private Sub glistN_UnregisterGlist()
+On Error Resume Next
+If glistN.TabStopSoft Then Callback.LastActive = ctrlName
+End Sub
+

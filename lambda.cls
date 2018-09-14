@@ -11,6 +11,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = True
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
+Option Explicit
 ' lambda functions in M2000
 ' in running state copy nonlocal variables to current list
 Public name$
@@ -20,8 +21,9 @@ Private Type Vars
     there As Long
 End Type
 Private Total As Long, fixed As Long, used As Long
-Private myVar() As Vars, myHash As New Hash
+Private myVar() As Vars, myHash As New Hash, refcount As Long
 Public subs As FastCollection
+Public OriginalCode As Long, lastlen As Long
 Sub CopyToVar(bstack As basetask, glb As Boolean, v() As Variant)
 Dim i As Long, nm$, where As Long, dummy As Variant, x1 As Long
 bstack.IamLambda = True
@@ -29,9 +31,11 @@ bstack.IamLambda = True
 If used > 0 Then
 For i = 0 To used - 1
     myHash.ReadVar i, nm$, where
+    If refcount = 0 Then
+    
     If IsObject(myVar(where).Value) Then
     dummy = 0
-    myVar(where).there = GlobalVar(nm$, dummy, , glb)
+    myVar(where).there = globalvar(nm$, dummy, , glb)
     
     If Typename(myVar(where).Value) = "lambda" Then
          
@@ -44,7 +48,10 @@ For i = 0 To used - 1
     ElseIf Typename(myVar(where).Value) = "Group" Then
     Dim aa As Object
     Set aa = myVar(where).Value
+   
+   
      UnFloatGroup bstack, nm$, myVar(where).there, aa
+   
      Set aa = Nothing
      Else
      
@@ -52,26 +59,61 @@ For i = 0 To used - 1
     End If
     
     Else
-    myVar(where).there = GlobalVar(nm$, myVar(where).Value, , glb)
+    myVar(where).there = globalvar(nm$, myVar(where).Value, , glb)
     End If
+    Else
+    
+    Dim there As Long
+    there = myVar(where).there
+     If IsObject(myVar(where).Value) Then
+        
+        
+           If Typename(myVar(where).Value) = "lambda" Then
+             globalvar nm$, there, True, glb
+                        If glb Then
+                        GlobalSub nm$ + "()", "CALL EXTERN " & Str(myVar(where).there)
+                    Else
+                        GlobalSub here$ & "." & bstack.GroupName & nm$ + "()", "CALL EXTERN " & Str(there)
+                End If
+          ElseIf Typename(myVar(where).Value) = "Group" Then
+          If myVar(where).Value.IamApointer Then
+          globalvar nm$, there, True, glb
+
+          Else
+          LinkGroup bstack, nm$, v(there)
+          End If
+
+          Else
+          globalvar nm$, there, True, glb
+          End If
+Else
+          globalvar nm$, there, True, glb
+    End If
+    End If
+    
+    
 Next i
 End If
+refcount = refcount + 1
 End Sub
 
 Sub CopyFromVar(bstack As basetask, v() As Variant)
 Dim i As Long, aa As Group
 bstack.IamLambda = False
+refcount = refcount - 1
+' maybe not needed
+Set bstack.lastobj = Nothing
+If refcount = 0 Then
 For i = 0 To used - 1
+' check if is better with MyIsObject
     If IsObject(v(myVar(i).there)) Then
-        If Typename(myVar(where).Value) = "Group" Then
-       
-             ' using copygroup from module1
-            Set bstack.lastobj = Nothing
-            CopyGroup v(myVar(i).there), bstack
-            Set myVar(where).Value = bstack.lastobj
+        If Typename(myVar(i).Value) = "Group" Then
+        
+            Set myVar(i).Value = CopyGroupObj(v(myVar(i).there))
+            ' why not  Set v(myVar(i).there) = Nothing
         Else
-        Set myVar(i).Value = v(myVar(i).there)
-        Set v(myVar(i).there) = Nothing
+            Set myVar(i).Value = v(myVar(i).there)
+            Set v(myVar(i).there) = Nothing
         End If
         
     Else
@@ -79,6 +121,7 @@ For i = 0 To used - 1
     End If
     myVar(i).there = 0
 Next i
+End If
 
 End Sub
 
@@ -92,7 +135,6 @@ If IsObject(val) Then
 '' maybe here we can copy
 '' check first the type
 If TypeOf val Is mHandler Then
-CheckGarbage val, v()
 If val.indirect > -1 Then
     Set myVar(where).Value = v(val.indirect)
     Exit Sub
@@ -107,6 +149,7 @@ End Sub
 Private Sub Class_Initialize()
 Total = 10
 ReDim myVar(Total) As Vars
+
 End Sub
 Private Function GetFree() As Long
     If used >= Total Then
@@ -118,36 +161,16 @@ Private Function GetFree() As Long
 End Function
 
 Private Sub Class_Terminate()
-Dim i As Long
-If used > 0 Then
-For i = used - 1 To 0
-If IsObject(myVar(i).Value) Then
-            GarbageCollector.Done = False
-           If Typename(myVar(i).Value) = "mHandler" Then
-            If GarbageCollector.Find(objptr(myVar(i).Value.objref)) Then
-            ElseIf GarbageCollector.Find(objptr(myVar(i).Value)) Then
-            
-            End If
-            End If
-            
-            If GarbageCollector.Done Then
-            If GarbageCollector.ReferCountValue <= 2 Then
-                GarbageCollector.RemoveWithNoFind
-            End If
-            End If
-            Set myVar(i).Value = Nothing
-End If
-Next i
-
-End If
 Erase myVar()
 Set subs = Nothing
 End Sub
 Public Sub CopyTo(a As lambda, v() As Variant)
 ' only for new
-Dim b As lambda, VR As Variant, where As Long
+Dim b As lambda, VR As Variant, where As Long, nm$
 Set a = New lambda
 a.code$ = Me.code$
+a.OriginalCode = Me.OriginalCode
+a.lastlen = Me.lastlen
 Dim i As Long
 If used > 0 Then
 For i = 0 To used - 1
@@ -178,19 +201,4 @@ End If
 End If
 Next i
 End If
-End Sub
-Sub CheckGarbage(obj As Variant, var() As Variant)
-With obj
-     If .indirect = -1 Then
-                                        If .t1 <> 2 Then
-                                            If Not GarbageCollector.ExistKey(objptr(.objref)) Then
-                                            GarbageCollector.AddKey objptr(.objref), .objref
-                                            End If
-                                        End If
-                                        ElseIf var(.indirect).objref.t1 <> 2 Then
-                                            If Not GarbageCollector.ExistKey(objptr(var(.indirect).objref)) Then
-                                                GarbageCollector.AddKey objptr(var(.indirect).objref), var(.indirect)
-                                            End If
-                                        End If
-End With
 End Sub

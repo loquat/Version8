@@ -110,13 +110,14 @@ If index > -1 Then
     HasCollision = (Hash(PriveSpace(index).lastpos) - 1 <> index) Or (PriveSpace(index).Pleft > 0)
 End If
 End Property
-Public Sub AddKey(RHS As Long, Optional aValue As String = "", Optional aInfo As String = "")
+Public Sub AddKey(RHS As Long, Optional aValue As String = vbNullString, Optional aInfo As String = vbNullString)
     index = -1
     lastkey = RHS
     Done = False
     ItemCreator lastkey, aValue, aInfo
     
 End Sub
+
 Private Sub ItemCreator(Key As Long, storethis As String, andthis As String)
 Dim a As Long, first As Long
 Done = False
@@ -130,6 +131,18 @@ With PriveSpace(a)
 place HashFunc1(first), a
 End With
 End Sub
+Public Sub ItemCreator2(Key As Long, storethis As String)
+Dim first As Long
+first = HashFunc0(Key)
+index = Malloc()
+With PriveSpace(index)
+    .Key = Key
+    .Container = storethis
+    .firsthash = first
+place HashFunc1(first), index
+End With
+End Sub
+
 Private Sub place(ByVal b, ByVal a)
     Dim k As Long
     k = Hash(b)
@@ -152,14 +165,14 @@ End Function
 Private Function HashFunc(a As Long)
 HashFunc = MyMod(uintnew(HashFunc0(a) Or &HAFFAFF7 + 5 + hashlen), hashlen)
 End Function
-Private Function MyMod(r1 As Double, po) As Double
+Private Function MyMod(r1, po) As Variant
 MyMod = r1 - Fix(r1 / po) * po
 End Function
-Private Function uintnew(ByVal a As Double) As Double
-If a > CDbl(2147483647) Then a = CDbl(2147483647)
-If a < CDbl(-2147483648#) Then a = CDbl(-2147483648#)
+Private Function uintnew(ByVal a As Currency) As Currency
+If a > 2147483647@ Then a = 2147483647@
+If a < -2147483648@ Then a = -2147483648@
 If a < 0 Then
-uintnew = 4294967296# + a
+uintnew = 4294967296@ + a
 Else
 uintnew = a
 End If
@@ -170,6 +183,20 @@ Else
     Value = PriveSpace(index).Container
 End If
 End Property
+Property Let ValueStr(RHS As String)
+If index = -1 Then
+Else
+    PriveSpace(index).Container = RHS
+End If
+End Property
+
+Property Get StrPointer() As Long
+If index = -1 Then
+Else
+    StrPointer = StrPtr(PriveSpace(index).Container)
+End If
+End Property
+
 Property Get Info() As String
 If index = -1 Then
 Else

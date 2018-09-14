@@ -1,19 +1,20 @@
 Attribute VB_Name = "Module7"
 Option Explicit
-Private Const MEM_DECOMMIT = &H4000
-Private Const MEM_RELEASE = &H8000
-Private Const MEM_COMMIT = &H1000
-Private Const MEM_RESERVE = &H2000
+Private Declare Function GdiFlush Lib "gdi32" () As Long
+Private Const MEM_DECOMMIT = &H4000&
+Private Const MEM_RELEASE = &H8000&
+Private Const MEM_COMMIT = &H1000&
+Private Const MEM_RESERVE = &H2000&
 Private Const MEM_RESET = &H80000
 Private Const MEM_TOP_DOWN = &H100000
-Private Const PAGE_READONLY = &H2
-Private Const PAGE_READWRITE = &H4
-Private Const PAGE_EXECUTE = &H10
-Private Const PAGE_EXECUTE_READ = &H20
-Private Const PAGE_EXECUTE_READWRITE = &H40
-Private Const PAGE_GUARD = &H100
-Private Const PAGE_NOACCESS = &H1
-Private Const PAGE_NOCACHE = &H200
+Private Const PAGE_READONLY = &H2&
+Private Const PAGE_READWRITE = &H4&
+Private Const PAGE_EXECUTE = &H10&
+Private Const PAGE_EXECUTE_READ = &H20&
+Private Const PAGE_EXECUTE_READWRITE = &H40&
+Private Const PAGE_GUARD = &H100&
+Private Const PAGE_NOACCESS = &H1&
+Private Const PAGE_NOCACHE = &H200&
 Private Type FILETIME
     dwLowDateTime As Long
     dwHighDateTime As Long
@@ -30,11 +31,11 @@ Private Const WAIT_TIMEOUT& = &H102&
 Private Const INFINITE = &HFFFF
 Private Const ERROR_ALREADY_EXISTS = 183&
 
-Private Const QS_HOTKEY& = &H80
+Private Const QS_HOTKEY& = &H80&
 Private Const QS_KEY& = &H1
-Private Const QS_MOUSEBUTTON& = &H4
-Private Const QS_MOUSEMOVE& = &H2
-Private Const QS_PAINT& = &H20
+Private Const QS_MOUSEBUTTON& = &H4&
+Private Const QS_MOUSEMOVE& = &H2&
+Private Const QS_PAINT& = &H20&
 Private Const QS_POSTMESSAGE& = &H8
 Private Const QS_SENDMESSAGE& = &H40
 Private Const QS_TIMER& = &H10
@@ -93,6 +94,7 @@ Private Declare Function MsgWaitForMultipleObjects Lib "user32" ( _
     ByVal dwMilliseconds As Long, _
     ByVal dwWakeMask As Long) As Long
 ''DoEvents alternative function.
+Private Declare Function FlushInstructionCache Lib "KERNEL32" (ByVal hProcess As Long, lpBaseAddress As Any, ByVal dwSize As Long) As Long
 Private Declare Function HeapAlloc Lib "KERNEL32" (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal dwBytes As Long) As Long
 Private Declare Function HeapReAlloc Lib "kernel32.dll" (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal lpMem As Long, ByVal dwBytes As Long) As Long
 Private Declare Function HeapSize Lib "kernel32.dll" (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal lpMem As Long) As Long
@@ -102,7 +104,7 @@ Private Declare Function VirtualAlloc Lib "KERNEL32" (ByVal lpAddress As Long, B
 Private Declare Function VirtualFree Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal dwFreeType As Long) As Long
 Private Declare Function VirtualLock Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
 Private Declare Function VirtualUnlock Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long) As Long
-
+Private Declare Function VirtualProtect Lib "KERNEL32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal flNewProtect As Long, lpflOldProtect As Long) As Long
 Public Declare Function Wow64EnableWow64FsRedirection Lib "kernel32.dll" (ByVal Enable As Boolean) As Boolean
 Private Declare Function GetProcAddress Lib "KERNEL32" (ByVal hModule As Long, ByVal lpProcName As String) As Long
 Private Declare Function GetModuleHandle Lib "KERNEL32" Alias "GetModuleHandleA" (ByVal lpModuleName As String) As Long
@@ -127,14 +129,29 @@ If NoRun Then
     Dim hHeap As Long: hHeap = GetProcessHeap()
     Blockmalloc = HeapAlloc(hHeap, way, nBytes)
 Else
-
-End If
+    'allocate but not for execution yet
+    Blockmalloc = VirtualAlloc(ByVal 0&, nBytes, MEM_COMMIT + MEM_RESERVE, PAGE_READWRITE)
+ End If
+End Function
+Public Sub VirtualBlockCopy(oPtr As Long, mPtr As Long, NewmBytes As Long, oldmBytes As Long)
+VirtualLock mPtr, NewmBytes
+VirtualLock oPtr, oldmBytes
+ If NewmBytes >= oldmBytes Then
+            ' copy mBytes to new
+            CpyMem ByVal oPtr, ByVal mPtr, oldmBytes
+            Else
+            CpyMem ByVal oPtr, ByVal mPtr, NewmBytes
+            
+            End If
+VirtualUnlock oPtr, oldmBytes
+VirtualUnlock mPtr, NewmBytes
+End Sub
+Public Function BlockResizeVirtual(ByVal Ptr As Long, ByVal nBytes As Long) As Long
+    BlockResizeVirtual = VirtualAlloc(ByVal Ptr, nBytes, MEM_COMMIT, PAGE_READWRITE)
 End Function
 Public Function BlockResizemalloc(ByVal Ptr As Long, ByVal nBytes As Long, way As Long) As Long
-
     Dim hHeap As Long: hHeap = GetProcessHeap()
     BlockResizemalloc = HeapReAlloc(hHeap, way, Ptr, nBytes)
-
 End Function
 Public Function BlockSize(ByVal Ptr As Long) As Long
     Dim hHeap As Long: hHeap = GetProcessHeap()
@@ -145,21 +162,69 @@ Public Sub BlockFree(ByVal Ptr As Long)
     HeapFree GetProcessHeap(), 0, Ptr
 
 End Sub
-
-Public Sub BlockFreeVirtual(ByVal Ptr As Long, ByVal nBytes As Long)
-        VirtualUnlock Ptr, nBytes
-        VirtualFree Ptr, nBytes, MEM_DECOMMIT
-        VirtualFree Ptr, 0, MEM_RELEASE
+Public Sub SetUpForExecution(ByVal Ptr As Long, ByVal nBytes As Long)
+        FlushInstructionCache GetCurrentProcess, Ptr, nBytes
+        VirtualProtect Ptr, nBytes, PAGE_EXECUTE_READ, PAGE_READWRITE
+        VirtualLock Ptr, nBytes
 End Sub
+Public Sub ReleaseExecution(ByVal Ptr As Long, ByVal nBytes As Long)
+       FlushInstructionCache GetCurrentProcess, Ptr, nBytes
+        
+        VirtualUnlock Ptr, nBytes
+         VirtualProtect Ptr, nBytes, PAGE_READWRITE, PAGE_EXECUTE_READ
+End Sub
+Public Sub BlockFreeVirtual(ByVal Ptr As Long, ByVal nBytes As Long)
+      ' VirtualUnlock Ptr, nBytes
+     
+      If VirtualFree(Ptr, 0&, &H8000&) = 0 Then
+      Debug.Print GetLastError()
+      End If
+End Sub
+Public Sub MyRefresh(bstack As basetask)
+On Error Resume Next
+With Prefresh(GetCode(bstack.Owner))
+            If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
+            
+                If .RRCOUNTER = 0 Then
+                    .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
+                    If Not bstack.toprinter Then
+                    If bstack.Owner.Visible Then bstack.Owner.Refresh
+                    End If
+                 End If
+                 
+                 End With
+End Sub
+Public Sub SkipRefresh(bstack As basetask)
+            With Prefresh(GetCode(bstack.Owner))
+                   .k1 = uintnew(timeGetTime + REFRESHRATE)
+                 End With
+End Sub
+Public Sub PrintRefresh(bstack As basetask, Scr As Object)
+    With Prefresh(GetCode(bstack.Owner))
+        If uintnew(timeGetTime) > .k1 Then
+            .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
+            If Scr.Visible Then Scr.Refresh
+            If Not TaskMaster Is Nothing Then
+                TaskMaster.StopProcess
+                DoEvents
+                TaskMaster.StartProcess
+            Else
+                DoEvents
+            End If
+        End If
+    End With
+End Sub
+
 Public Sub MyDoEvents0new(some As Object)
    On Error GoTo procbliah3
 
 
-
-            If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+        With Prefresh(GetCode(some))
+            If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
             
                 If RRCOUNTER = 0 Then
-                    k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+                    .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
+                    If byPassCallback Then Exit Sub
                     If some.Visible Then some.Refresh
                   
                    
@@ -172,20 +237,23 @@ Public Sub MyDoEvents0new(some As Object)
                         DoEvents
                     End If
            End If
+           End With
    Exit Sub
+   
 procbliah3:
 DoEvents
 End Sub
 
 Public Sub MyDoEvents0(some As Object)
    On Error GoTo procbliah3
+With Prefresh(GetCode(some))
 
 
-
-            If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+            If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
             
-                If RRCOUNTER = 0 Then
-                    k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+                If .RRCOUNTER = 0 Then
+                    .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
+                    If byPassCallback Then Exit Sub
                     If some.Visible Then some.Refresh
                   
                    End If
@@ -197,15 +265,15 @@ Public Sub MyDoEvents0(some As Object)
                     Else
                         DoEvents
                     End If
-           
+End With
    Exit Sub
 procbliah3:
 DoEvents
 End Sub
 
-Public Sub MyDoEvents1(some As Object, Optional DOeVONLY As Boolean = False)
+Public Sub MyDoEvents1(some As Object, Optional DOeVONLY As Boolean = False, Optional ResetK1 As Boolean)
 Static once As Boolean
-On Error Resume Next
+If some Is Nothing Then
 If TaskMaster Is Nothing Then
 If DOeVONLY Then
             DoEvents
@@ -214,7 +282,69 @@ If DOeVONLY Then
             
             If RRCOUNTER = 0 Then
             k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
-            If Not some Is Nothing Then If some.Visible Then some.Refresh
+            End If
+            End If
+Else
+    TaskMaster.rest
+    If DOeVONLY Then
+     If Not once Then
+        once = True
+        TaskMaster.TimerTickNow
+        TaskMaster.StopProcess
+         DoEvents
+         TaskMaster.StartProcess
+         once = False
+         Else
+        TaskMaster.TimerTickNow
+         TaskMaster.StopProcess
+         DoEvents
+        End If
+    Else
+    
+    If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+    
+            
+            If RRCOUNTER = 0 Then
+            k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+            TaskMaster.Dispose
+         If Not once Then
+        once = True
+        TaskMaster.TimerTickNow
+        TaskMaster.StopProcess
+         DoEvents
+         TaskMaster.StartProcess
+         once = False
+         Else
+        TaskMaster.TimerTickNow
+         TaskMaster.StopProcess
+         DoEvents
+        End If
+                  
+                  End If
+        End If
+
+TaskMaster.RestEnd
+End If
+
+
+
+Exit Sub
+End If
+
+On Error Resume Next
+If some Is Nothing Then Set some = Form1
+With Prefresh(GetCode(some))
+If TaskMaster Is Nothing Then
+If DOeVONLY Then
+            DoEvents
+            Else
+    
+    If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
+            
+            If .RRCOUNTER = 0 Then
+            .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
+            If byPassCallback Then Exit Sub
+            If some.Visible Then some.Refresh
             End If
             End If
 Else
@@ -235,15 +365,14 @@ Else
          DoEvents
         End If
     Else
-    If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
-            
-            If RRCOUNTER = 0 Then
-            k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
-            If some Is Nothing Then
-            TaskMaster.Dispose
-            Else
-         If some.Visible Then some.Refresh ': TaskMaster.RestEnd: Exit Sub
-         End If
+      If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
+             If .RRCOUNTER = 0 Then
+            .k1 = uintnew(timeGetTime) + REFRESHRATE: .RRCOUNTER = 1
+         If byPassCallback Then Exit Sub
+         If some.Visible Then some.Refresh
+        
+         
+         
          If Not once Then
         once = True
         TaskMaster.TimerTickNow
@@ -262,21 +391,75 @@ Else
 
 TaskMaster.RestEnd
 End If
+End With
 End Sub
-Public Sub MyRefresh(some As Object)
+Public Sub MyDoEvents2(Optional obj As Object)
+On Error GoTo endevents
+If k1 = 0 Then k1 = uintnew(timeGetTime): RRCOUNTER = 1
+   If TaskMaster.PlayMusic Then
+                    TaskMaster.OnlyMusic = True
+                        TaskMaster.TimerTick
+                        TaskMaster.OnlyMusic = False
+    End If
+    If TaskMaster.Processing Then
+    If Not extreme Then
+        If Not obj Is Nothing Then
+              With Prefresh(GetCode(obj))
+                If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
+                If RRCOUNTER = 0 Then
+                    If obj.Visible Then
+                        If Kform Then
+                            Kform = False
+                            .k1 = 0
+                            TaskMaster.rest
+                            UpdateWindow obj.hWND
+                            DoEvents
+                            TaskMaster.RestEnd
+                        Else
+                            MyDoEvents1 obj
+                        End If
+                       '.k1 = uintnew(timeGetTime + REFRESHRATE)
+                       .RRCOUNTER = 1
+                    End If
+                End If
+            End With
+        End If
+        
+    Else
+         If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+         If RRCOUNTER = 0 Then k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+               
 
 
-    If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
-            
-            If RRCOUNTER = 0 Then
-            k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
-         If some.Visible Then some.Refresh
 
-                  End If
-                  
+    End If
+Else
 
-   
+
+
+ If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+ If RRCOUNTER = 0 Then
+        k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+        If QRY Then
+             DoEvents
+        Else
+            If Kform Then
+                Kform = False
+                TaskMaster.rest
+                DoEvents
+                TaskMaster.RestEnd
+            Else
+                DoEvents
+            End If
+        End If
+    End If
+End If
+Exit Sub
+endevents:
+ DoEvents
 End Sub
+
+
 Public Sub SleepWait3(lNumberOf10ThmiliSeconds As Long)
 
 
@@ -295,7 +478,6 @@ Exit Sub
 Dim l As Boolean, k
 l = NOEDIT
   b.MARKONE
-  ''If A > 10 Then Sleep 0
 While a > b.MARKTWO And l = NOEDIT
 MyDoEvents2 Form1
 If Not TaskMaster Is Nothing Then If TaskMaster.Processing Then TaskMaster.TimerTick Else Sleep 0
@@ -310,9 +492,9 @@ Do
  MyDoEvents
 Loop Until a > b.MARKTWO
 End Sub
-Public Sub SleepWaitEdit(lNumberOf10ThmiliSeconds As Long)
+Public Sub SleepWaitEdit(bstack As basetask, lNumberOf10ThmiliSeconds As Long)
 On Error Resume Next
-If Forms.Count < 3 Then
+If Forms.count < 3 Then
 Sleep 1
  DoEvents
 Exit Sub
@@ -366,7 +548,7 @@ TaskMaster.rest
     
     ft.dwLowDateTime = CLng(dblDelayLow)
     lRet = SetWaitableTimer(hTimer, ft, 0, 0, 0, False)
-    
+   With Prefresh(GetCode(bstack.Owner))
     Do
         ' QS_ALLINPUT means that MsgWaitForMultipleObjects will
         ' return every time the thread in which it is running gets
@@ -376,10 +558,10 @@ TaskMaster.rest
         lBusy = MsgWaitForMultipleObjects(1, hTimer, False, _
             INFINITE, QS_ALLINPUT&)
  
-       If uintnew(timeGetTime) > k1 Then RRCOUNTER = 0
+       If uintnew(timeGetTime) > .k1 Then .RRCOUNTER = 0
             
-            If RRCOUNTER = 0 Then
-            k1 = uintnew(timeGetTime + REFRESHRATE): RRCOUNTER = 1
+            If .RRCOUNTER = 0 Then
+            .k1 = uintnew(timeGetTime + REFRESHRATE): .RRCOUNTER = 1
           If TaskMaster Is Nothing Then
             DoEvents
            Else
@@ -389,6 +571,7 @@ TaskMaster.rest
          End If
                   End If
   Loop Until lBusy = WAIT_OBJECT_0
+  End With
     ' Close the handles when you are done with them.
     CloseHandle hTimer
 If Not TaskMaster Is Nothing Then TaskMaster.RestEnd
@@ -396,7 +579,7 @@ End Sub
         
 Public Sub SleepWaitEdit2(lNumberOf10ThmiliSeconds As Long)
 On Error Resume Next
-If Forms.Count < 3 Then
+If Forms.count < 3 Then
 Sleep 1
 DoEvents
 Exit Sub
@@ -455,7 +638,7 @@ End If
     
     ft.dwLowDateTime = CLng(dblDelayLow)
     lRet = SetWaitableTimer(hTimer, ft, 0, 0, 0, False)
-    
+    Dim handlepopup As Boolean, lastpopup As Long
     Do
         ' QS_ALLINPUT means that MsgWaitForMultipleObjects will
         ' return every time the thread in which it is running gets
@@ -466,9 +649,37 @@ End If
             INFINITE, QS_ALLINPUT&)
            
                   DoEvents
+            If Not Screen.ActiveForm Is Nothing Then
+                    If TypeOf Screen.ActiveForm Is GuiM2000 Then
+                        '    Debug.Print Screen.ActiveForm.PopUpMenuVal
+                        If Not handlepopup Then
+                            If Screen.ActiveForm.PopUpMenuVal Then
+                            lastpopup = Screen.ActiveForm.hDC
+                            handlepopup = True
+                            End If
+                       ElseIf GetForegroundWindow <> Screen.ActiveForm.hWND Then
+       If handlepopup Then
+                        handlepopup = False
+                        SetVisibleByHDC lastpopup, False
+                        End If
+                        End If
+Else
+                        If GetForegroundWindow <> Screen.ActiveForm.hWND Then Exit Do
+                        End If
+      
 
+
+End If
   Loop Until lBusy = WAIT_OBJECT_0
     ' Close the handles when you are done with them.
     CloseHandle hTimer
 If Not TaskMaster Is Nothing Then TaskMaster.RestEnd
+End Sub
+Sub SetVisibleByHDC(whatHDC As Long, setit As Long)
+Dim k As Form
+On Error Resume Next
+For Each k In Forms
+    If k.hDC = whatHDC Then k.Visible = setit
+Next k
+
 End Sub

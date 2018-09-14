@@ -215,6 +215,7 @@ Dim stolemodalid As Variant
 Public Property Set Process(mBtask As basetask)
 Set MyBaseTask = mBtask
 End Property
+
 Private Sub Command1_Click()
 trace = True
 STq = False
@@ -235,12 +236,65 @@ Public Sub ComputeNow()
 stackshow MyBaseTask
 End Sub
 
-Private Sub compute_KeyDown(KeyCode As Integer, shift As Integer)
+Private Sub compute_KeyDown(KeyCode As Integer, Shift As Integer)
 If KeyCode = 13 Then
 KeyCode = 0
-gList3(2).BackColor = &H3B3B3B
-TestShowCode = False
-stackshow MyBaseTask
+    If Compute.Prompt = "? " Then
+        gList3(2).backcolor = &H3B3B3B
+        TestShowCode = False
+        stackshow MyBaseTask
+    Else
+    bypasstrace = True
+        If Compute <> "" Then STbyST = False
+        If Execute(MyBaseTask, (Compute), False) <> 1 Then
+        If Form2.Visible Then
+        If pagio$ = "GREEK" Then
+        testpad.Text = "Λάθος " + LastErNameGR
+        Else
+        testpad.Text = "Error " + LastErName
+        End If
+        testpad.Show
+        Else
+        Compute = ""
+        End If
+        End If
+        
+          MOUT = False
+         NOEXECUTION = False
+         NERR = False
+         LastErNum = 0
+         If LastErName <> "" Then LastErName = Chr(0) + LastErName
+         If LastErNameGR <> "" Then LastErNameGR = Chr(0) + LastErNameGR
+         
+        bypasstrace = False
+        
+        KeyCode = 0
+        If MyBaseTask.IamChild And sb2used = 0 Then
+        NOEXECUTION = True
+        MOUT = True
+        If Form2.Visible Then Compute = "": FillAgainLabels
+        End If
+    End If
+ElseIf KeyCode = 8 Then
+If Compute = "" Then
+    If Compute.Prompt = "? " Then
+        Compute.Prompt = ">"
+         If pagio$ = "GREEK" Then
+            Compute.ThisKind = "     Ένθεση Εντολής + Enter | Backspace Επιλογή Τύπου"
+        Else
+            Compute.ThisKind = "     Inline command + Enter | Backspace Select Mode"
+        End If
+    Else
+        Compute.Prompt = "? "
+        If pagio$ = "GREEK" Then
+            Compute.ThisKind = "     [Εκφρ,] Εκφρ + Enter | Backspace Επιλογή Τύπου"
+        Else
+            Compute.ThisKind = "     [Expr,] Expr + Enter | Backspace Select Mode"
+        End If
+    End If
+KeyCode = 0
+Exit Sub
+End If
 End If
 End Sub
 'M2000 [ΕΛΕΓΧΟΣ - CONTROL]
@@ -249,9 +303,9 @@ Private Sub Form_Activate()
 '
 trace = True
 If stolemodalid = 0 Then
-If ModalId <> 0 Then
-stolemodalid = ModalId
-ModalId = Rnd * 645677887
+If Modalid <> 0 Then
+stolemodalid = Modalid
+Modalid = Rnd * 645677887
 End If
 
 End If
@@ -259,12 +313,12 @@ End Sub
 
 Private Sub Form_Deactivate()
 If stolemodalid <> 0 Then
-ModalId = stolemodalid
+Modalid = stolemodalid
 stolemodalid = 0
 End If
 End Sub
 
-Private Sub Form_KeyDown(KeyCode As Integer, shift As Integer)
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
 If KeyCode = 27 Then
 KeyCode = 0
 Unload Me
@@ -281,6 +335,7 @@ Private Sub Form_Load()
 Dim i As Long
 height1 = 5280 * DYP / 15
 width1 = 7860 * DXP / 15
+MoveFormToOtherMonitorOnly Me
 lastfactor = 1
 LastWidth = -1
 HelpLastWidth = -1
@@ -292,11 +347,11 @@ gList4.NoCaretShow = True
 gList4.restrictLines = 3
 gList4.CenterText = True
 gList2.CapColor = rgb(255, 160, 0)
-gList2.HeadLine = ""
+gList2.HeadLine = vbNullString
 
 gList2.FloatList = True
-gList2.FloatLimitTop = ScrY() - players(0).Yt * 2
-gList2.FloatLimitLeft = ScrX() - players(0).Xt * 2
+gList2.FloatLimitTop = VirtualScreenHeight() - players(0).Yt * 2
+gList2.FloatLimitLeft = VirtualScreenWidth() - players(0).Xt * 2
 gList2.MoveParent = True
 'gList2.enabled = True
 gList1.DragEnabled = False
@@ -304,7 +359,9 @@ gList1.AutoPanPos = True
 Set testpad = New TextViewer
 gList1.NoWheel = True
 Set testpad.Container = gList1
-testpad.FileName = ""
+testpad.FileName = vbNullString
+testpad.glistN.DropEnabled = False
+testpad.glistN.DragEnabled = False
 testpad.glistN.LeftMarginPixels = 8
 testpad.NoMark = True
 testpad.NoColor = False
@@ -322,20 +379,20 @@ Set Label(1).Container = gList3(1)
 Set Label(2).Container = gList3(2)
 If pagio$ = "GREEK" Then
 gList2.HeadLine = "Έλεγχος"
-Compute.Prompt = "Τυπωσε "
+Compute.Prompt = "? "
+Compute.ThisKind = "     [Εκφρ,] Εκφρ + Enter | Backspace Επιλογή Τύπου"
+Compute.FadePartColor = &H777777
 Label(0).Prompt = "Τμήμα: "
 Label(1).Prompt = "Εντολή: "
 Label(2).Prompt = "Επόμενο: "
-' Επόμενο Βήμα/ Next Step
-' Αργή Ροή / Slow Flow
-' Κράτηση / Stop
-
 gList4.additemFast "Επόμενο Βήμα"
 gList4.additemFast "Αργή Ροή"
 gList4.additemFast "Διακοπή"
 Else
 gList2.HeadLine = "Control"
-Compute.Prompt = "Print "
+Compute.Prompt = "? "
+Compute.ThisKind = "     [Expr,] Expr + Enter | Backspace Select Mode"
+Compute.FadePartColor = &H777777
 Label(0).Prompt = "Module: "
 Label(1).Prompt = "Id: "
 Label(2).Prompt = "Next: "
@@ -352,6 +409,50 @@ gList4.enabled = True
 gList4.ListindexPrivateUse = 0
 gList4.ShowMe
 End Sub
+Sub FillAgainLabels()
+Dim oldindex As Long
+If pagio$ = "GREEK" Then
+If gList2.HeadLine = "Control" Then gList2.HeadLine = "Έλεγχος"
+If Compute.Prompt = ">" Then
+        Compute.ThisKind = "     Ένθεση Εντολής + Enter | Backspace Επιλογή Τύπου"
+Else
+        Compute.ThisKind = "     [Εκφρ,] Εκφρ + Enter | Backspace Επιλογή Τύπου"
+End If
+Label(1).Prompt = "Εντολή: "
+Label(2).Prompt = "Επόμενο: "
+oldindex = gList4.ListIndex
+gList4.Clear
+gList4.additemFast "Επόμενο Βήμα"
+gList4.additemFast "Αργή Ροή"
+gList4.additemFast "Διακοπή"
+gList4.ListindexPrivateUse = oldindex
+gList4.PrepareToShow
+gList2.PrepareToShow
+ Compute.glistN.ShowMe
+         
+
+        
+Else
+If gList2.HeadLine = "Έλεγχος" Then gList2.HeadLine = "Control"
+If Compute.Prompt = ">" Then
+            Compute.ThisKind = "     Inline command + Enter | Backspace Select Mode"
+    Else
+            Compute.ThisKind = "     [Expr,] Expr + Enter | Backspace Select Mode"
+    End If
+Label(1).Prompt = "Id: "
+Label(2).Prompt = "Next: "
+oldindex = gList4.ListIndex
+gList4.Clear
+gList4.additemFast "Next Step"
+gList4.additemFast "Slow Flow"
+gList4.additemFast "Stop"
+gList4.ListindexPrivateUse = oldindex
+gList4.PrepareToShow
+gList2.PrepareToShow
+Compute.glistN.ShowMe
+End If
+
+End Sub
 Private Sub Form_Unload(Cancel As Integer)
 testpad.Dereference
 Compute.Dereference
@@ -359,15 +460,41 @@ Set MyBaseTask = Nothing
 trace = False
 STq = True
 End Sub
+
+
+
+
+
+
+
 Private Sub gList1_CheckGotFocus()
-gList1.BackColor = &H606060
+gList1.backcolor = &H606060
 gList1.ShowMe2
 End Sub
 
 Private Sub gList1_CheckLostFocus()
 
-gList1.BackColor = &H3B3B3B
+gList1.backcolor = &H3B3B3B
 gList1.ShowMe2
+End Sub
+
+
+Private Sub gList1_MouseUp(x As Single, y As Single)
+Dim monitor As Long
+If Not Form4.Visible Then
+monitor = FindFormSScreen(Form1)
+Else
+monitor = FindFormSScreen(Form4)
+End If
+sHelp gList2.HeadLine, testpad.Text, (ScrInfo(monitor).Width - 1) * 3 / 5, (ScrInfo(monitor).Height - 1) * 4 / 7
+vHelp Not Form4.Visible
+If TestShowCode Then
+Form4.label1.SelStartSilent = testpad.SelStart
+Form4.label1.SelLength = 0
+Form4.label1.SelectionColor = rgb(255, 64, 128)
+If testpad.SelStart > 0 And testpad.SelLength > 0 Then Form4.label1.SelLength = testpad.SelLength
+'Form4.Label1.Show
+End If
 End Sub
 
 
@@ -391,11 +518,11 @@ Public Property Let Label1prompt(ByVal index As Long, ByVal RHS As String)
 Label(index).Prompt = RHS
 End Property
 
-Public Property Get Label1(ByVal index As Long) As String
-Label1 = Label(index)
+Public Property Get label1(ByVal index As Long) As String
+label1 = Label(index)
 End Property
 
-Public Property Let Label1(ByVal index As Long, ByVal RHS As String)
+Public Property Let label1(ByVal index As Long, ByVal RHS As String)
 Label(index) = RHS
 End Property
 Public Sub FillThereMyVersion(thathDC As Long, thatRect As Long, thatbgcolor As Long)
@@ -404,13 +531,13 @@ b = 2
 CopyFromLParamToRect a, thatRect
 a.Left = b
 a.Right = setupxy - b
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), 0
 b = 5
 a.Left = b
 a.Right = setupxy - b
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), rgb(255, 160, 0)
 
@@ -439,7 +566,7 @@ doubleclick = 0
 
 End Sub
 
-Private Sub gList2_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub gList2_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
 If Button <> 0 Then tracecounter = 100
 End Sub
 
@@ -447,35 +574,35 @@ Private Sub gList2_MouseUp(x As Single, y As Single)
 tracecounter = 0
 End Sub
 
-Private Sub gList2_NeedDoEvents()
-'
 
-End Sub
 
 
 Private Sub glist3_CheckGotFocus(index As Integer)
-Dim s$
+Dim s$, z$
 gList4.SetFocus
 If index < 2 Then
 abt = False
 
-vH_title$ = ""
+vH_title$ = vbNullString
 s$ = Label(index)
 If index = 1 Then
    
         Dim i As Long
         If MyBaseTask.ExistVar2(s$) Then
+            IsStr1 MyBaseTask, "Type$(" + s$ + ")", z$
+            
             If AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128 Then
-                sHelp "Static Variable", s$, vH_x, vH_y
+                sHelp "Static Variable", s$ & vbCrLf & "Type " + z$, vH_x, vH_y
             Else
-                sHelp "Στατική Μεταβλητή", s$, vH_x, vH_y
+                sHelp "Στατική Μεταβλητή", s$ & vbCrLf & "Τύπος " + z$, vH_x, vH_y
             End If
         
         ElseIf GetlocalVar(s$, i) Then
+            IsStr1 MyBaseTask, "Type$(" + s$ + ")", z$
             If AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128 Then
-                sHelp "Local Identifier", s$, vH_x, vH_y
+                sHelp "Local Identifier", s$ & vbCrLf & "Type " + z$, vH_x, vH_y
             Else
-                sHelp "Τοπικό Αναγνωριστικό", s$, vH_x, vH_y
+                sHelp "Τοπικό Αναγνωριστικό", s$ & vbCrLf & "Τύπος " + z$, vH_x, vH_y
             End If
         ElseIf GetGlobalVar(s$, i) Then
         If AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128 Then
@@ -486,13 +613,29 @@ If index = 1 Then
             
             End If
         ElseIf GetSub(s$, i) Then
+            '
+            z$ = Label(2)
+            If MaybeIsSymbol(z$, "=") Then
             If AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128 Then
-                sHelp "Μοdule", s$, vH_x, vH_y
+                sHelp "New Identifier", s$, vH_x, vH_y
             Else
-                sHelp "Τμήμα", s$, vH_x, vH_y
+                sHelp "Νέο Αναγνωριστικό", s$, vH_x, vH_y
             End If
+            Else
+                GoTo jumphere
+            End If
+            
         ElseIf ismine(s$) Then
             fHelp MyBaseTask, s$, AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128
+        Else
+        z$ = Label(2)
+        If MaybeIsSymbol(z$, "=") Then
+            If AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128 Then
+                sHelp "New Identifier", s$, vH_x, vH_y
+            Else
+                sHelp "Νέο Αναγνωριστικό", s$, vH_x, vH_y
+            End If
+        End If
         End If
     
     vHelp
@@ -507,7 +650,33 @@ vHelp
 End If
 Else
 If index = 0 Then
+i = MyBaseTask.OriginalCode
+jumphere:
+Dim aa As Long, aaa As String
+aa = i
+aaa = SBcode(aa)
+If Left$(aaa, 10) = "'11001EDIT" Then
+SetNextLine aaa
+End If
+Dim monitor As Long
+If Not Form4.Visible Then
+monitor = FindFormSScreen(Form1)
+Else
+monitor = FindFormSScreen(Form4)
+End If
+If aa > 0 Then
+sHelp s$, aaa, (ScrInfo(monitor).Width - 1) * 3 / 5, (ScrInfo(monitor).Height - 1) * 4 / 7
+vHelp Not Form4.Visible
+ElseIf subHash.Find(s$, aa) Then
+sHelp s$, SBcode(aa), (ScrInfo(monitor).Width - 1) * 3 / 5, (ScrInfo(monitor).Height - 1) * 4 / 7
+vHelp Not Form4.Visible
+
+ElseIf subHash.Find(subHash.LastKnown, aa) Then
+sHelp s$, SBcode(aa), (ScrInfo(monitor).Width - 1) * 3 / 5, (ScrInfo(monitor).Height - 1) * 4 / 7
+vHelp Not Form4.Visible
+Else
     fHelp MyBaseTask, s$, AscW(s$ + Mid$(" Σ", Abs(pagio$ = "GREEK") + 1)) < 128
+    End If
 Else
 Select Case Left$(LTrim(Label(2)) + " ", 1)
 Case "?", "!", " ", ".", ":", Is >= "A", Chr$(10), """"
@@ -518,10 +687,10 @@ End If
 ElseIf index = 2 Then
 TestShowCode = Not TestShowCode
 If TestShowCode Then
-gList3(2).BackColor = &H606060
+gList3(2).backcolor = &H606060
 Label(2) = Label(2)
 Else
-gList3(2).BackColor = &H3B3B3B
+gList3(2).backcolor = &H3B3B3B
 Label(2) = Label(2)
 End If
 stackshow MyBaseTask
@@ -544,7 +713,7 @@ b.Right = gList4.WidthPixels
              End If
              'EXECUTED = False
               SetTextColor thisHDC, 0
-              b.top = b.Bottom - 1 * lastfactor
+              b.Top = b.Bottom - 1 * lastfactor
        
             FillBack thisHDC, b, &H777777
            
@@ -552,7 +721,7 @@ b.Right = gList4.WidthPixels
           
           
     SetTextColor thisHDC, gList4.ForeColor
-    b.top = b.Bottom - 1
+    b.Top = b.Bottom - 1
     FillBack thisHDC, b, 0
     End If
     If item = gList4.ListIndex Then
@@ -592,7 +761,11 @@ trace = True
 STq = True
 STbyST = False
 Case 2
-ModalId = 0
+If Not TaskMaster Is Nothing Then
+TaskMaster.Dispose
+MyBaseTask.ThrowThreads
+End If
+Modalid = 0
 NOEXECUTION = True
 trace = True
 STq = False
@@ -611,7 +784,7 @@ End Sub
  Private Sub PrintItem(mHdc As Long, c As String, r As RECT, Optional way As Long = DT_SINGLELINE Or DT_NOPREFIX Or DT_NOCLIP Or DT_CENTER Or DT_VCENTER)
     DrawText mHdc, StrPtr(c), -1, r, way
     End Sub
-Private Sub Form_MouseDown(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseDown(Button As Integer, Shift As Integer, x As Single, y As Single)
 
 If Button = 1 Then
     
@@ -638,7 +811,7 @@ If Button = 1 Then
 
 End If
 End Sub
-Private Sub Form_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
 Dim addX As Long, addy As Long, factor As Single, once As Boolean
 If once Then Exit Sub
 If Button = 0 Then dr = False: drmove = False
@@ -670,8 +843,8 @@ Else
         
   
         once = True
-        If Height > ScrY() Then addy = -(Height - ScrY()) + addy
-        If Width > ScrX() Then addX = -(Width - ScrX()) + addX
+        If Height > VirtualScreenHeight() Then addy = -(Height - VirtualScreenHeight()) + addy
+        If Width > VirtualScreenWidth() Then addX = -(Width - VirtualScreenWidth()) + addX
         If (addy + Height) / height1 > 0.4 And ((Width + addX) / width1) > 0.4 Then
    
         If addy <> 0 Then SizeDialog = ((addy + Height) / height1)
@@ -710,7 +883,7 @@ End If
 once = False
 End Sub
 
-Private Sub Form_MouseUp(Button As Integer, shift As Integer, x As Single, y As Single)
+Private Sub Form_MouseUp(Button As Integer, Shift As Integer, x As Single, y As Single)
 
 If dr Then Me.mousepointer = 0
 tracecounter = 0
@@ -728,11 +901,11 @@ allheight = height1 * factor
 itemWidth = allwidth - 2 * borderleft
 itemwidth3 = itemWidth * 2 / 5
 itemwidth2 = itemWidth * 3 / 5 - borderleft
-Move Left, top, allwidth, allheight
+Move Left, Top, allwidth, allheight
 FontTransparent = False  ' clear background  or false to write over
 gList2.Move borderleft, bordertop, itemWidth, bordertop * 3
-gList2.FloatLimitTop = ScrY() - bordertop - bordertop * 3
-gList2.FloatLimitLeft = ScrX() - borderleft * 3
+gList2.FloatLimitTop = VirtualScreenHeight() - bordertop - bordertop * 3
+gList2.FloatLimitLeft = VirtualScreenWidth() - borderleft * 3
 gList3(0).Move borderleft, bordertop * 5, itemwidth2, bordertop * 4
 gList3(1).Move borderleft, bordertop * 9, itemwidth2, bordertop * 4
 gList3(2).Move borderleft, bordertop * 13, itemwidth2, bordertop * 4

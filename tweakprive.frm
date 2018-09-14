@@ -425,7 +425,7 @@ Option Explicit
 Implements InterPress
 Private ex As Boolean
 Private mcd As String
-Private Pen As Long
+Private pen As Long
 Public textbox2 As myTextBox
 Public WithEvents combo1 As dropdownlist
 Attribute combo1.VB_VarHelpID = -1
@@ -484,7 +484,7 @@ End Sub
 
 
 Private Sub Form_Load()
-Hook hWnd, Nothing
+Hook hWND, Nothing
 DIS.enabled = True
 AutoRedraw = True
 Form_Load1
@@ -521,8 +521,8 @@ End If
 End Sub
 
 Private Sub Form_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
-Dim addX As Long, addy As Long, factor As Single, Once As Boolean
-If Once Then Exit Sub
+Dim addX As Long, addy As Long, factor As Single, once As Boolean
+If once Then Exit Sub
 If Button = 0 Then dr = False: drmove = False
 If bordertop < 150 Then
 If (y > Height - 150 And y < Height) And (x > Width - 150 And x < Width) Then mousepointer = vbSizeNWSE Else If Not (dr Or drmove) Then mousepointer = 0
@@ -551,9 +551,9 @@ Else
 
         
   
-        Once = True
-        If Height > ScrY() Then addy = -(Height - ScrY()) + addy
-        If Width > ScrX() Then addX = -(Width - ScrX()) + addX
+        once = True
+        If Height > VirtualScreenHeight() Then addy = -(Height - VirtualScreenHeight()) + addy
+        If Width > VirtualScreenWidth() Then addX = -(Width - VirtualScreenWidth()) + addX
         If (addy + Height) / height1 > 0.4 And ((Width + addX) / width1) > 0.4 Then
    
         If addy <> 0 Then SizeDialog = ((addy + Height) / height1)
@@ -590,7 +590,7 @@ Else
         ly = y
    
 End If
-Once = False
+once = False
 End Sub
 
 Private Sub Form_MouseUp(Button As Integer, shift As Integer, x As Single, y As Single)
@@ -611,11 +611,11 @@ allheight = height1 * factor
 itemWidth = allwidth - 2 * borderleft
 itemwidth3 = (itemWidth - 2 * borderleft) / 3
 itemwidth2 = (itemWidth - borderleft) / 2
-Move Left, top, allwidth, allheight
+Move Left, Top, allwidth, allheight
 FontTransparent = False  ' clear background  or false to write over
 gList2.Move borderleft, bordertop, itemWidth, bordertop * 3
-gList2.FloatLimitTop = ScrY() - bordertop - bordertop * 3
-gList2.FloatLimitLeft = ScrX() - borderleft * 3
+gList2.FloatLimitTop = VirtualScreenHeight() - bordertop - bordertop * 3
+gList2.FloatLimitLeft = VirtualScreenWidth() - borderleft * 3
 gList1.Move borderleft, bordertop * 6, itemWidth, bordertop * 3
 gList3.Move borderleft + itemWidth * 2 / 5, bordertop * 9, itemWidth * 3 / 5, bordertop * 18
 gList9.Move borderleft, bordertop * 10, itemWidth * 2 / 5 - borderleft, bordertop * 3
@@ -647,7 +647,7 @@ command1(1).Move borderleft, bordertop * 39, itemwidth3, bordertop * 3
 command1(2).Move borderleft + itemwidth3 + borderleft, bordertop * 39, itemwidth3, bordertop * 3
 command1(0).Move borderleft + itemwidth3 * 2 + borderleft * 2, bordertop * 39, itemwidth3, bordertop * 3
 Gradient Me, rgb(100, 100, 100), rgb(100, 0, 0), 0, 0, ScaleWidth, ScaleHeight, False, True
-Set Me.Picture = Me.image
+Set Me.Picture = Me.Image
 gList11.ShowMe2
 End Sub
 Function ScaleDialogFix(ByVal factor As Single) As Single
@@ -725,7 +725,7 @@ cc.ClassKey = HKEY_CURRENT_USER
     cc.SectionKey = basickey
     cc.ValueKey = "FONT"
         cc.ValueType = REG_SZ
-        If cc.Value = "" Then
+        If cc.Value = vbNullString Then
         cc.Value = "Verdana"
         End If
         MYFONT = cc.Value
@@ -769,17 +769,17 @@ End If
         checkbox1.CheckReset = CStr(cc.Value)
     cc.ValueKey = "PEN"
         cc.ValueType = REG_DWORD
-        Pen = cc.Value
+        pen = cc.Value
     tbPen.enabled = False
-        tbPen = CStr(Pen)
-        tbPen.Value = CStr(Pen)
+        tbPen = CStr(pen)
+        tbPen.Value = CStr(pen)
 tbPen.enabled = True
       DIS.ForeColor = QBColor(tbPen)
     cc.ValueKey = "PAPER"
         cc.ValueType = REG_DWORD
         tbPaper = CStr(cc.Value)
         tbPaper.Value = cc.Value
-        DIS.BackColor = QBColor(cc.Value)
+        DIS.backcolor = QBColor(cc.Value)
         cc.ValueKey = "COMMAND"
         cc.ValueType = REG_SZ
 
@@ -788,7 +788,7 @@ tbPen.enabled = True
         
         
         
-         If cc.Value = "" Then
+         If cc.Value = vbNullString Then
         cc.Value = "GREEK"
         
         End If
@@ -802,7 +802,7 @@ End If
         combo3.additem "DARK"
         cc.ValueKey = "HTML"
         cc.ValueType = REG_SZ
-        If cc.Value = "" Then
+        If cc.Value = vbNullString Then
         cc.Value = "DARK"
         End If
         combo3.Text = cc.Value
@@ -943,7 +943,7 @@ gList11.restrictLines = 6
 gList11.CenterText = True
 gList11.VerticalCenterText = True
 
-gList11.Text = "Warning: There is no " & vbCrLf & "warning about this " & vbCrLf & "software except that" & vbCrLf & "is given AS-IS" & vbCrLf & vbCrLf & "George Karras 1999-2015 ©"
+gList11.Text = "Warning: There is no " & vbCrLf & "warning about this " & vbCrLf & "software except that" & vbCrLf & "is given AS-IS" & vbCrLf & vbCrLf & "George Karras 1999-2018 ©"
 
 height1 = 6450 * DYP / 15
 width1 = 9900 * DXP / 15
@@ -964,7 +964,7 @@ Form1.AutoRedraw = True
 a$ = ListenUnicode(915, 953, 974, 961, 947, 959, 962, 32, 922, 945, 961, 961, 940, 962)
 lastfactor = ScaleDialogFix(SizeDialog)
 ScaleDialog lastfactor, LastWidth
-gList2.HeadLine = ""
+gList2.HeadLine = vbNullString
 If TweakLang = 0 Then
 gList2.HeadLine = "Ρυθμίσεις"
 Else
@@ -1078,7 +1078,6 @@ End If
   Set myCancel.Callback = Me
 myCancel.enabled = True
 MyFill
-
  playall
  End Sub
 
@@ -1090,13 +1089,13 @@ b = 2
 CopyFromLParamToRect a, thatRect
 a.Left = b
 a.Right = setupxy - b
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), 0
 b = 5
 a.Left = b
 a.Right = setupxy - b
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), rgb(255, 160, 0)
 
@@ -1118,7 +1117,7 @@ End Sub
 
 Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)
 Set LastGlist = Nothing
-UnHook hWnd
+UnHook hWND
 End Sub
 
 Private Sub Form_Unload(Cancel As Integer)
@@ -1249,7 +1248,7 @@ Private Sub TBLineSpacing_ValidString(ThatString As String, setpos As Long)
 Dim a As Long, k As String
 On Error Resume Next
 k = tbLineSpacing
-If ThatString = "" Then ThatString = "0"
+If ThatString = vbNullString Then ThatString = "0"
 a = CLng(ThatString)
 
 If Err.Number > 0 Then
@@ -1277,7 +1276,7 @@ Private Sub tbPaper_ValidString(ThatString As String, setpos As Long)
 Dim a As Long, k As String
 On Error Resume Next
 k = tbPaper
-If ThatString = "" Then ThatString = "0"
+If ThatString = vbNullString Then ThatString = "0"
 a = CLng(ThatString)
 If a = CLng(tbPen) Or Err.Number > 0 Then
 
@@ -1289,7 +1288,7 @@ End If
 tbPaper.Value = a
 a = tbPaper.Value  ' cut max or min
 tbPaper.Value = a
-DIS.BackColor = mycolor(a)
+DIS.backcolor = mycolor(a)
 DIS.ShowMe2
 'tbPaper.Info = "This is info box" + vbCrLf + "X = " + CStr(a)
 ThatString = CStr(a)
@@ -1304,7 +1303,7 @@ Private Sub tbpen_ValidString(ThatString As String, setpos As Long)
 Dim a As Long, k As String
 On Error Resume Next
 k = tbPen
-If ThatString = "" Then ThatString = "0"
+If ThatString = vbNullString Then ThatString = "0"
 a = CLng(ThatString)
 If a = CLng(tbPaper) Or Err.Number > 0 Then
 ThatString = k: setpos = 1: tbPen.ResetPan
@@ -1328,7 +1327,7 @@ Private Sub tbsize_ValidString(ThatString As String, setpos As Long)
 Dim a As Long, k As String
 On Error Resume Next
 k = tbSize
-If ThatString = "" Then Exit Sub  'special here
+If ThatString = vbNullString Then Exit Sub  'special here
 a = CLng(ThatString)
 
 If Err.Number > 0 Then

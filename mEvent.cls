@@ -13,8 +13,6 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
 
-
-'
 Dim mEnabled As Boolean
 Private PriveSpace() As GenItem
 Dim MaxSpace As Long
@@ -31,7 +29,7 @@ Public Function Extern(ParamArray a()) As Long
 Attribute Extern.VB_UserMemId = 0
 ' default function
 Dim ohere$, objref As New basetask
-If Forms.Count >= 4 Then
+If Forms.count >= 4 Then
     Set objref.Owner = Form1.DIS
 Else
 Exit Function
@@ -81,7 +79,7 @@ mS.DataVal CDbl(a(i))
 End Select
 Next i
 objref.soros.MergeTop mS
-here$ = ""
+here$ = vbNullString
 Call CallEvent(objref, "", 1, VarIndex)
 Set mS = Nothing
 here$ = ohere$
@@ -157,14 +155,14 @@ Friend Sub ReduceHash(newTop As Long)
        With PriveSpace(i)
         If .Pleft > 0 Then
             Hash(.lastpos) = .Pleft
-            .Key = ""
+            .Key = vbNullString
             .Pleft = 0
         Else
             Hash(.lastpos) = 0
-            .Key = ""
+            .Key = vbNullString
         End If
 
-        .ndx = ""
+        .ndx = vbNullString
             
         End With
 
@@ -219,13 +217,12 @@ End Function
 Property Get CurMaxSpace()
 CurMaxSpace = MaxSpace
 End Property
-Property Get Count()
-Count = toplim + 1
+Property Get count()
+count = toplim + 1
 End Property
 Friend Function Find(Key As String, func As String) As Boolean
 Dim k As Long
-func = ""
-'If Right$(Key, 2) = "()" Then Stop
+func = vbNullString
 If Len(Key) = 0 Then Exit Function
 k = Hash(HashFunc(Key)) - 1
 
@@ -274,7 +271,6 @@ k = Hash(HashFunc(Key)) - 1
 If k >= 0 Then
 Do
     If PriveSpace(k).Key = Key Then ExistKey = True: Exit Function
-  '  If k = PriveSpace(k).Pleft - 1 Then Stop: Exit Do
      k = PriveSpace(k).Pleft - 1
 Loop Until k < 0
 End If
@@ -292,7 +288,7 @@ End With
 place HashFunc(Key), a
 End Sub
 Property Get Percent()
-Percent = Count / hashlen
+Percent = count / hashlen
 End Property
 Private Sub place(ByVal b, ByVal a)
     Dim k As Long
@@ -342,14 +338,14 @@ End Function
 Private Function HashFunc(a$)
 HashFunc = MyMod(uintnew(HashFunc0(a$) Or &HAFFAFF7 + Len(a$) + hashlen + 1), hashlen)
 End Function
-Private Function MyMod(r1 As Double, po) As Double
+Private Function MyMod(r1, po) As Variant
 MyMod = r1 - Fix(r1 / po) * po
 End Function
-Private Function uintnew(ByVal a As Double) As Double
-If a > CDbl(2147483647) Then a = CDbl(2147483647)
-If a < CDbl(-2147483648#) Then a = CDbl(-2147483648#)
+Private Function uintnew(ByVal a As Currency) As Currency
+If a > 2147483647@ Then a = 2147483647@
+If a < -2147483648@ Then a = -2147483648@
 If a < 0 Then
-uintnew = 4294967296# + a
+uintnew = 4294967296@ + a
 Else
 uintnew = a
 End If

@@ -134,6 +134,7 @@ Private Function BytesToStr(ab() As Byte) As String
     
 End Function
 Private Sub TaskInterface_Tick()
+
  Dim x As Integer, mycnt As Long
 Dim lpBuffer(2048) As Byte
 On Error GoTo there
@@ -219,12 +220,13 @@ Private Property Get TaskInterface_busy() As Boolean
 TaskInterface_busy = mybusy
 End Property
 Public Property Get TaskInterface_CodeData() As String
-TaskInterface_CodeData = ""
+TaskInterface_CodeData = vbNullString
 End Property
 
 ' DELEGATED METHODS
 
 Private Sub TaskInterface_Dispose(ByVal Action As DisposeAction)
+On Error Resume Next
   myBase.Dispose Action
   Set myBase = Nothing
 End Sub

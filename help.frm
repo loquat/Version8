@@ -55,8 +55,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
-Public WithEvents Label1 As TextViewer
-Attribute Label1.VB_VarHelpID = -1
+Public WithEvents label1 As TextViewer
+Attribute label1.VB_VarHelpID = -1
 Private l As Long
 Private t As Long
 Private mt As Integer
@@ -70,9 +70,10 @@ Private Declare Function CopyFromLParamToRect Lib "user32" Alias "CopyRect" (lpD
 Dim Lx As Long, ly As Long, dr As Boolean, drmove As Boolean
 Dim bordertop As Long, borderleft As Long
 Dim allheight As Long, allwidth As Long, itemWidth As Long
-Dim UAddPixelsTop As Long
+Dim UAddPixelsTop As Long, flagmarkout As Boolean
 
 Private Sub Form_Deactivate()
+
 jump = False
 End Sub
 
@@ -104,27 +105,28 @@ setupxy = 20 * Helplastfactor
 scrTwips = Screen.TwipsPerPixelX
 gList1.CapColor = rgb(255, 160, 0)
 gList1.LeftMarginPixels = 4
-Set Label1 = New TextViewer
-Set Label1.Container = gList1
-Label1.FileName = ""
-Label1.glistN.DropEnabled = False
-Label1.glistN.DragEnabled = Not abt
-Label1.NoMark = True
-Label1.NoColor = True
-Label1.EditDoc = False
-Label1.nowrap = False
-Label1.enabled = False    '' true before
-Label1.glistN.FloatList = True
-Label1.glistN.MoveParent = True
-With Label1.glistN
-If FeedbackExec$ = "" Or Not abt Then
-.WordCharLeft = ConCat(":", "{", "}", "[", "]", ",", "(", ")", "!", "'", ";", "=", ">", "<", """", " ", "+", "-", "/", "*", "^")
-.WordCharRight = ConCat(":", "{", "}", "[", "]", ",", ")", "!", ";", "'", "=", ">", "<", """", " ", "+", "-", "/", "*", "^")
-.WordCharRightButIncluded = "(" + ChrW(160) ' so aaa(sdd) give aaa( as word
+Set label1 = New TextViewer
+Set label1.Container = gList1
+label1.FileName = vbNullString
+label1.glistN.NoMoveDrag = True
+label1.glistN.DropEnabled = False
+label1.glistN.DragEnabled = Not abt
+label1.NoMark = True
+label1.NoColor = True
+label1.EditDoc = False
+label1.nowrap = False
+label1.enabled = False    '' true before
+label1.glistN.FloatList = True
+label1.glistN.MoveParent = True
+With label1.glistN
+If FeedbackExec$ = vbNullString Or Not abt Then
+.WordCharLeft = ConCat(":", "{", "}", "[", "]", ",", "!", "'", ";", "=", ">", "<", """", " ", "+", "-", "/", "*", "^")
+.WordCharRight = ConCat(":", "{", "}", "[", "]", ",", , "!", ";", "'", "=", ">", "<", """", " ", "+", "-", "/", "*", "^")
+.WordCharRightButIncluded = ChrW(160) ' so aaa(sdd) give aaa( as word
 Else
 .WordCharLeft = "['"
 .WordCharRight = "']"
-.WordCharRightButIncluded = "(" + ChrW(160)
+.WordCharRightButIncluded = ChrW(160)
 End If
 End With
 mt = DXP
@@ -142,15 +144,22 @@ If HelpLastWidth = 0 Then HelpLastWidth = -1
 Else
 HelpLastWidth = -1
 End If
-''Me.FontSize = Int((ScrY() - 1) / DYP / 70 + 0.5)
+''Me.FontSize = Int((VirtualScreenheight() - 1) / DYP / 70 + 0.5)
 ''Label1.FontSize = Me.FontSize
 ''setupxy = Me.FontSize * 20 / 15 * DYP / 15 + 4
 
 End Sub
-Public Sub MoveMe()
+Public Sub moveMe()
 ScaleDialog Helplastfactor, HelpLastWidth
-Hook2 hWnd, gList1
-Label1.glistN.SoftEnterFocus
+Hook2 hWND, gList1
+label1.glistN.SoftEnterFocus
+If IsWine Then
+If Not Screen.ActiveForm Is Nothing Then
+If Not Screen.ActiveForm Is Form4 Then
+Form4.Show , Screen.ActiveForm
+End If
+End If
+End If
 End Sub
 
 Private Sub Form_MouseDown(Button As Integer, shift As Integer, x As Single, y As Single)
@@ -211,8 +220,8 @@ Else
         
   
         once = True
-        If Height > ScrY() Then addy = -(Height - ScrY()) + addy
-        If Width > ScrX() Then addX = -(Width - ScrX()) + addX
+        If Height > VirtualScreenHeight() Then addy = -(Height - VirtualScreenHeight()) + addy
+        If Width > VirtualScreenWidth() Then addX = -(Width - VirtualScreenWidth()) + addX
         If (addy + Height) / vH_y > 0.4 And ((Width + addX) / vH_x) > 0.4 Then
    
         If addy <> 0 Then helpSizeDialog = ((addy + Height) / vH_y)
@@ -260,7 +269,7 @@ End Sub
 
 
 Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)
-UnHook2 hWnd
+UnHook2 hWND
 Set LastGlist2 = Nothing
 End Sub
 
@@ -280,8 +289,8 @@ End Sub
 
 
 Private Sub Form_Unload(Cancel As Integer)
-Label1.Dereference  ' to ensure that no reference hold objects..
-Set Label1 = Nothing
+label1.Dereference  ' to ensure that no reference hold objects..
+Set label1 = Nothing
 Helplastfactor = 1
 helpSizeDialog = 1
 End Sub
@@ -302,47 +311,82 @@ Private Sub glist1_getpair(a As String, b As String)
 If mHelp Or abt Then
 gList1.EditFlag = False
     MKEY$ = MKEY$ & a
-    a = ""
+    a = vbNullString
 End If
 End Sub
 
 Private Sub gList1_KeyDown(KeyCode As Integer, shift As Integer)
+If shift <> 0 Then
+If label1.SelectionColor = rgb(255, 64, 128) Then label1.SelectionColor = 0
+label1.NoMark = False
+label1.EditDoc = True
+End If
 Select Case KeyCode
 Case vbKeyDelete, vbKeyBack, vbKeyReturn, vbKeySpace
+
 gList1.EditFlag = False
-If mHelp Or abt Then MKEY$ = MKEY$ & Chr$(KeyCode): KeyCode = 0
+If mHelp Or abt Then
+MKEY$ = MKEY$ & ChrW$(KeyCode)
+KeyCode = 0
+End If
 End Select
 If mHelp Or abt Then shift = 0
+
 End Sub
 
-Private Sub gList1_KeyDownAfter(KeyCode As Integer, shift As Integer)
-If mHelp Or abt Then
-'KeyCode = 0
-'shift = 0
+
+
+Private Sub glist1_MarkOut()
+If flagmarkout Then
+If label1.SelectionColor = rgb(255, 64, 128) Then label1.SelectionColor = 0
+flagmarkout = False: Exit Sub
 End If
 End Sub
 
 Private Sub gList1_MouseMove(Button As Integer, shift As Integer, x As Single, y As Single)
+flagmarkout = True
 If mHelp Then
 shift = 0
 End If
 End Sub
 
 Private Sub gList1_selected2(item As Long)
-Label1.NoMark = False
-Label1.EditDoc = True
+
+label1.NoMark = False
+label1.EditDoc = True
 End Sub
 
 Private Sub glist1_WordMarked(ThisWord As String)
 If abt Then
 feedback$ = Trim$(Replace(ThisWord, ChrW(160), " "))
 feednow$ = FeedbackExec$
+label1.SelLengthSilent = 0
 CallGlobal feednow$
 Else
-If Not mHelp Then ffhelp Trim$(Replace(ThisWord, ChrW(160), " "))
+If Not mHelp Then
+If Form2.Visible Then
+    If ThisWord = "Control" Or ThisWord = "Έλεγχος" Then
+    sHelp Form2.gList2.HeadLine, Form2.testpad.Text, vH_x, vH_y
+    vHelp
+    If TestShowCode Then
+    label1.SelStartSilent = Form2.testpad.SelStart
+    label1.SelLengthSilent = 0
+    label1.SelectionColor = rgb(255, 64, 128)
+    If Form2.testpad.SelStart > 0 And Form2.testpad.SelLength > 0 Then label1.SelLength = Form2.testpad.SelLength
+    End If
+    Else
+    ffhelp Trim$(Replace(ThisWord, ChrW(160), " "))
+    End If
+    Else
+    label1.SelLengthSilent = 0
+    label1.SelectionColor = 0
+ffhelp Trim$(Replace(ThisWord, ChrW(160), " "))
+End If
 
 End If
-ThisWord = ""
+
+End If
+ThisWord = vbNullString
 
 End Sub
 Public Sub FillThereMyVersion2(thathDC As Long, thatRect As Long, thatbgcolor As Long)
@@ -352,14 +396,14 @@ b = setupxy / 3
 CopyFromLParamToRect a, thatRect
 a.Right = a.Right - b
 a.Left = a.Right - setupxy - b
-a.top = b
+a.Top = b
 a.Bottom = b + setupxy / 5
 FillThere thathDC, VarPtr(a), thatbgcolor
-a.top = b + setupxy / 5 + setupxy / 10
+a.Top = b + setupxy / 5 + setupxy / 10
 a.Bottom = b + setupxy \ 2
 FillThere thathDC, VarPtr(a), thatbgcolor
-a.top = b + 2 * (setupxy / 5 + setupxy / 10)
-a.Bottom = a.top + setupxy / 5
+a.Top = b + 2 * (setupxy / 5 + setupxy / 10)
+a.Bottom = a.Top + setupxy / 5
 FillThere thathDC, VarPtr(a), thatbgcolor
 
 End Sub
@@ -369,13 +413,13 @@ b = 2
 CopyFromLParamToRect a, thatRect
 a.Left = a.Right - b
 a.Right = a.Right - setupxy + b
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), gList1.dcolor
 b = 5
 a.Left = a.Left - 3
 a.Right = a.Right + 3
-a.top = b
+a.Top = b
 a.Bottom = setupxy - b
 FillThere thathDC, VarPtr(a), gList1.CapColor
 
@@ -418,16 +462,16 @@ End If
 allwidth = NewWidth  ''vH_x * factor
 allheight = vH_y * factor
 itemWidth = allwidth - 2 * borderleft
-MyForm Me, Left, top, allwidth, allheight, True, factor
+myform Me, Left, Top, allwidth, allheight, True, factor
 
   
 gList1.addpixels = 4 * factor
-Label1.Move borderleft, bordertop, itemWidth, allheight - bordertop * 2
+label1.Move borderleft, bordertop, itemWidth, allheight - bordertop * 2
 
-Label1.NewTitle vH_title$, (4 + UAddPixelsTop) * factor
-Label1.Render
-gList1.FloatLimitTop = ScrY() - bordertop - bordertop * 3
-gList1.FloatLimitLeft = ScrX() - borderleft * 3
+label1.NewTitle vH_title$, (4 + UAddPixelsTop) * factor
+label1.Render
+gList1.FloatLimitTop = VirtualScreenHeight() - bordertop - bordertop * 3
+gList1.FloatLimitLeft = VirtualScreenWidth() - borderleft * 3
 
 
 End Sub

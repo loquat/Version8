@@ -11,6 +11,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = True
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
+Option Explicit
 Dim ObjectRef As Long
 Dim vtref As Long
 Dim mIndex As Variant
@@ -20,9 +21,12 @@ Dim IamMethod  As Boolean
 Dim hardlink As Object, useobj As Boolean
 Dim lastobj As Object
 Public Arr As Boolean
+Dim oEnum As IUnknown
+
 Function IsObj()
     IsObj = useobj
 End Function
+
 Sub Construct(ref As Long, vtrefnumber As Long, Optional indirect As Boolean = False)
 If useobj Then Exit Sub
 Init = True
@@ -42,6 +46,12 @@ useobj = True
 vtref = vtrefnumber
 End Sub
 
+Private Function Bind2Handler() As Object
+Dim m As mHandler
+Set m.objref = lastobj
+m.ReadOnly = True
+m.UseIterator = True
+End Function
 Public Property Get Value() As Variant
 Dim RETVAR As Variant
 If Init Then
@@ -53,6 +63,8 @@ Else
  End If
 
 Else
+
+
 If useobj Then
 If ReadPropObj(hardlink, vtref, RETVAR) Then
 If IsObject(RETVAR) Then
@@ -66,6 +78,9 @@ Else
  If IsObject(RETVAR) Then
 Set Value = RETVAR
 Else
+On Error Resume Next
+If TypeOf RETVAR Is IUnknown Then Set Value = RETVAR: Exit Property
+Err.Clear
 Value = RETVAR
 End If
  End If
@@ -73,6 +88,7 @@ End If
  End If
 Else
 ' ??????????
+
 End If
 End Property
 Public Property Let Value(vNewValue As Variant)
